@@ -5,8 +5,9 @@
   "author": "Kr4pper",
   "main": "index.js",
   "scripts": {
-    "build": "rmdir /s /q dist && tsc -b && xcopy .\\config.json .\\dist",
+    "build": "rmdir /s /q dist && tsc -b",
     "validate": "node dist/index.js",
+    "parseCards": "node dist/util/parse-card-ids.js",
     "watch": "tsc --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
