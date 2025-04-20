@@ -17,6 +17,15 @@ const result = `export enum CardIds {
         .map(([name, id]) => `${name}U0 = ${id},\n ${name}U1 = ${id + 1_000_000},\n ${name}U2 = ${id + 2_000_000},\n ${name}U3 = ${id + 3_000_000},\n `)
         .join('\n ')
     }
+}
+    
+export const allCardIds: CardIds[] = Object.values(CardIds).filter(v => typeof v !== 'string');
+
+export const allCards: {[key: string]: {U0: CardIds, U1: CardIds, U2: CardIds, U3: CardIds}} = {
+    ${[...cards.entries()]
+        .map(([name, id]) => `${name}: {U0: ${id}, U1: ${id + 1_000_000}, U2: ${id + 2_000_000}, U3: ${id + 3_000_000}},`)
+        .join('\n ')
+    }
 }`;
 
 writeFileSync('src/api/card-ids.ts', result);

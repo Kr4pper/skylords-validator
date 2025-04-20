@@ -1,102 +1,120 @@
-import {existsSync, readdirSync, readFileSync} from 'fs';
-import {join} from 'path';
-import {Ability, AbilityParameterIds, Card, CardIds, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit} from './api';
+import {existsSync} from 'fs';
+import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId} from './api';
+import {loadGameData, loadLanguageTable, logger} from './util';
 
 const dbPath = process.argv[3];
 if (!existsSync(dbPath)) {
     throw new Error(`Invalid db path provided: ${dbPath}`);
 }
-const getFilePathsByType = (path: string, type: GameDataTableType) => {
-    const res: string[] = [];
-
-    for (const file of readdirSync(path)) {
-        if (file.startsWith(type.toString())) {
-            res.push(join(path, file));
-        }
-    }
-
-    return res;
-};
-
-const loadGameData = <T extends {Id: number;}>(db: string, type: GameDataTableType): Map<number, T> => {
-    const dataTable = new Map<CardIds, T>();
-
-    for (const filePath of getFilePathsByType(db, type)) {
-        const file = JSON.parse(readFileSync(filePath).toString()) as {Entities: T[];};
-        for (const entity of file.Entities) {
-            dataTable.set(entity.Id, entity);
-        }
-    }
-
-    return dataTable;
-};
-
-const loadSpellLines = <T extends {Id: number;}>(db: string, type: GameDataTableType): Map<number, T[]> => {
-    const dataTable = new Map<number, T[]>();
-
-    for (const filePath of getFilePathsByType(db, type)) {
-        const file = JSON.parse(readFileSync(filePath).toString()) as {Entities: T[];};
-        for (const entity of file.Entities) {
-            const next = dataTable.get(entity.Id) ? [...dataTable.get(entity.Id), entity] : [entity];
-            dataTable.set(entity.Id, next);
-        }
-    }
-
-    return dataTable;
-};
 
 const cards = loadGameData<Card>(dbPath, GameDataTableType.Card);
+const cardDescriptions = loadGameData<CardDescription>(dbPath, GameDataTableType.CardDescription);
 const squads = loadGameData<Squad>(dbPath, GameDataTableType.Squad);
 const units = loadGameData<Unit>(dbPath, GameDataTableType.Unit);
 const modes = loadGameData<Mode>(dbPath, GameDataTableType.Mode);
 const spells = loadGameData<Spell>(dbPath, GameDataTableType.Spell);
 const spellDescriptions = loadGameData<SpellDescription>(dbPath, GameDataTableType.SpellDescription);
-const spellTranslations = loadSpellLines<SpellTranslation>(dbPath, GameDataTableType.SpellTranslation);
+const spellTranslations = loadLanguageTable<SpellTranslation>(dbPath, LanguageTableType.Spell);
 const projectiles = loadGameData<Projectile>(dbPath, GameDataTableType.Projectile);
 const abilities = loadGameData<Ability>(dbPath, GameDataTableType.Ability);
 
-const card = cards.get(CardIds.GiantWyrmU0);
-const cardSquad = squads.get(card.DBEntityId);
-console.log({cardSquad});
+const toU0 = (id: number) => {
+    while (id > 1_000_000) id -= 1_000_000;
+    return id;
+};
 
-const squadUnit = units.get(cardSquad.SquadMembers[0].UnitId); // would need to check for each squad member individually
-console.log({squadUnit});
+const toProcess = [playerCards.MasterArchers];
 
-const listedHealth = squadUnit.Health;
-const listedDp20 = squadUnit.Archive.Damage;
-console.log({listedDp20, listedHealth});
+for (const upgrades of toProcess) {
+    const cardName = cardDescriptions.get(upgrades.U0).Name;
+    logger.info('Processing', cardName);
 
-const squadMode = modes.get(cardSquad.ModeIds[0]); // would need to check for each mode individually
-console.log({squadMode});
+    for (const upgrade of Object.values(upgrades)) {
+        const card = cards.get(upgrade);
+        const squad = squads.get(card.DBEntityId);
+        logger.debug({squad});
 
-const modeSpell = spells.get(squadMode.ModeUnitSpells[0]); // would need to find the "main" spell
-console.log({modeSpell});
+        const squadSize = squad.SquadMembers[0].Count;
+        const squadUnit = units.get(squad.SquadMembers[0].UnitId); // might be wrong for mixed-unit squads
+        logger.debug({squadUnit});
 
-const spellName = spellDescriptions.get(modeSpell.Id).Name;
-console.log({spellName});
+        const listedHealth = squadUnit.Health;
+        const listedDp20 = squadUnit.Archive.Damage;
+        logger.debug({listedDp20, listedHealth});
 
-// TODO what is the purpose of Spell -> SpellLine? translation template retrieved via 9114 + Spell ID
-const spellLines = spellTranslations.get(modeSpell.Id);
-console.log({spellLines});
-const atkCooldown = +spellLines.map(line => new RegExp(/every (\d+) seconds/i).exec(line.Text)).find(v => !!v)[1]; // TODO error handling
-console.log({atkCooldown});
+        const squadMode = modes.get(squad.ModeIds[0]); // might be wrong mode
+        logger.debug({squadMode});
 
-// TODO where is localization data including displayed hp/dmg values stored? referenced via SpellLine?
+        const modeSpell = spells.get(squadMode.ModeUnitSpells[0]); // might need to find the "main" spell
+        logger.debug({modeSpell});
 
-const spellProjectile = projectiles.get(modeSpell.ParametersContainer.Parameters[0].Value);
-console.log({spellProjectile});
+        const spellName = spellDescriptions.get(toU0(modeSpell.Id)).Name; // U1+ do not have descriptions
+        logger.debug({spellName});
 
-const projectileSpell = spells.get(spellProjectile.TargetSpellId);
-console.log({projectileSpell});
+        const tryScrapeAtkCooldown = () => {
+            try {
+                const spellTranslation = spellTranslations.get(modeSpell.Id);
+                logger.debug({spellTranslation});
+                const scrapedAtkCooldown = +spellTranslation.map(line => new RegExp(/every (\d+) seconds/i).exec(line.Text)).find(v => !!v)[1];
+                return scrapedAtkCooldown;
+            } catch (err) {
+                logger.debug('Scraping error', err);
+                return null;
+            }
+        };
+        const scrapedAtkCooldown = tryScrapeAtkCooldown();
+        logger.debug({scrapedAtkCooldown});
 
-const abilityToGain = abilities.get(projectileSpell.ParametersContainer.Parameters.find(p => p.Id === 386).Value);
-const minDmg = abilityToGain.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.DamageOnSingleUnit).Value;
-const maxDmg = abilityToGain.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.TotalCombinedDamage).Value;
+        const spellProjectile = projectiles.get(modeSpell.ParametersContainer.Parameters[0].Value);
+        logger.debug({spellProjectile});
 
-// TODO validate min dmg on unit = min dmg on structure unless there is a reason for it not to be
+        const projectileSpell = spells.get(spellProjectile.TargetSpellId);
+        logger.debug({projectileSpell});
+        logger.debug(projectileSpell.ParametersContainer.Parameters);
 
-const realDp20 = (minDmg + maxDmg) / 2 * 20 / atkCooldown;
-const realDp20Rounded = 5 * Math.round(realDp20 / 5);
-console.log({listedDp20, listedHealth, atkCooldown, minDmg, maxDmg, realDp20Rounded});
+        const getDmgRange = (): [number, number] => {
+            const dmgAgainstFigures = projectileSpell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.DamageAgainstFigures);
+            if (projectileSpell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.DamageAgainstFigures)) {
+                return [dmgAgainstFigures.Value, dmgAgainstFigures.Value];
+            }
 
-if (listedDp20 !== realDp20Rounded) console.warn(`Dp20 mismatch, got ${listedDp20} but expected ${realDp20Rounded}`);
+            const gainedAttackAbility = projectileSpell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.AbilityToGain);
+            if (gainedAttackAbility) {
+                const ability = abilities.get(gainedAttackAbility.Value);
+                logger.debug('ability parameters', ability.ParametersContainer.Parameters);
+                const minDmg = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.DamageOnSingleUnit).Value;
+                const maxDmg = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.TotalCombinedDamage).Value;
+                return [minDmg, maxDmg];
+            }
+
+            throw new Error('unsupported dmg type');
+        };
+        const [minDmg, maxDmg] = getDmgRange();
+
+        /**
+         * Validations:
+         *  listed hp = real hp
+         *  listed dp20 = real dp20
+         *  listed atk cooldown = real attack cooldown
+         *  upgrade text = real upgrade values
+         *  min dmg on unit = min dmg on structure (maybe?)
+         */
+
+        /**
+         * TODO
+         * - get listed and real atk cooldowns
+         * - get real hp
+         * - try processing more cards
+         */
+
+        const realDp20 = squadSize * (minDmg + maxDmg) / 2 * 20 / scrapedAtkCooldown;
+        const realDp20Rounded = 5 * Math.round(realDp20 / 5);
+        const result = {name: cardName, upgrade: Math.round(upgrade / 1_000_000), listedDp20, listedHealth, scrapedAtkCooldown, minDmg, maxDmg, realDp20Rounded};
+        logger.debug(result);
+
+        if (listedDp20 !== realDp20Rounded) {
+            logger.warn(`Dp20 mismatch, got ${listedDp20} but expected ${realDp20Rounded}`);
+            logger.warn(result);
+        }
+    }
+}

@@ -55,5 +55,31 @@ export enum GameDataTableType {
     Product = 9056,
     MapHubDescription = 9057,
     PageDescription = 9058,
-    SpellTranslation = '9114_en',
+}
+
+export enum LanguageTableType {
+    UI = 9100,
+    Ability = 9101,
+    BoosterPack = 9102,
+    Building = 9103,
+    Card = 9104,
+    CardCondition = 9105,
+    Goal = 9106,
+    SubGoal = 9107,
+    Map = 9108,
+    MapFile = 9109,
+    Mode = 9110,
+    ModeCondition = 9111,
+    Product = 9112,
+    Script = 9113,
+    Spell = 9114,
+    SpellCondition = 9115,
+    Squad = 9116,
+    StoryBook = 9117,
+}
+
+export enum LocaTableType {
+    Abilities = 9200,
+    Modes = 9201,
+    Spells = 9202,
 }

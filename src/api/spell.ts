@@ -44,3 +44,11 @@ export interface Spell {
     "Previews": number[],
     "Classes": number[],
 }
+
+export enum SpellParameterId {
+    WeaponType = 129,
+    DamageAgainstFigures = 130,
+    DamageAgainstBuildings = 131,
+    DamageAgainstWalls = 137,
+    AbilityToGain = 386,  // used by some ranged units to deal dmg, also Ids 464..468
+}

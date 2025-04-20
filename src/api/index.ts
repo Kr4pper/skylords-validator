@@ -1,5 +1,6 @@
 export * from './ability';
 export * from './card';
+export * from './card-description';
 export * from './card-ids';
 export * from './game-data-table-type';
 export * from './mode';
