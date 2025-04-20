@@ -16,5 +16,5 @@ const result = `export enum CardIds {
     ${[...cards.entries()].map(([name, id]) => `${name} = ${id},`).join('\n ')}
 }`;
 
-writeFileSync('src/data/card-ids.ts', result);
+writeFileSync('src/api/card-ids.ts', result);
 console.log('Output file written with', cards.size, 'entries');
