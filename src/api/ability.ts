@@ -25,6 +25,7 @@ export interface Ability {
 }
 
 export enum AbilityParameterIds {
+    GenericCavalrySpeed = 3,
     DamageOnSingleUnit = 362,
     DamageOnSingleStructure = 437,
     TotalCombinedDamage = 364,

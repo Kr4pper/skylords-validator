@@ -54,5 +54,6 @@ export enum GameDataTableType {
     BoosterPack = 9055,
     Product = 9056,
     MapHubDescription = 9057,
-    PageDescription = 9058
+    PageDescription = 9058,
+    SpellTranslation = '9114_en',
 }

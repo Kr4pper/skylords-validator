@@ -6,4 +6,6 @@ export * from './mode';
 export * from './projectile';
 export * from './squad';
 export * from './spell';
+export * from './spell-description';
+export * from './spell-translation';
 export * from './unit';
