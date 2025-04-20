@@ -6,7 +6,7 @@ export interface Card {
     ActivationCount: number;
     IsPromo: boolean;
     InternalUseOnly: boolean;
-    Rarity: 0 | 1 | 2 | 3;
+    Rarity: 0 | 1 | 2 | 3; // common ... ultra rare
     Edition: number;
     UIdamageValue: number;
     StateBalancing: number,

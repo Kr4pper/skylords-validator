@@ -14,7 +14,7 @@ export enum GameDataTableType {
     Ability = 9015,
     Card = 9016,
     CardCondition = 9017,
-    Squad = 9018,
+    Squad = 9018, // also referred to as Database Entity Id from within Card
     DBFolder = 9019,
     Preview = 9020,
     UnknownType = 9021,
