@@ -26,9 +26,19 @@ export interface Ability {
 
 export enum AbilityParameterIds {
     GenericCavalrySpeed = 3,
+    DamageOnSingleStructure2 = 349,
     Radius = 360,
     DamageOnSingleUnit = 362,
     BonusDmgAgainst = 363,
-    DamageOnSingleStructure = 437,
     TotalCombinedDamage = 364,
+    AbilityOnTarget = 374,
+    AbilityOnTarge2 = 375,
+    TargetableLayers = 414,
+    TotalDamage = 422,
+    WeaponType = 423,
+    DamagePerTarget = 424,
+    TargetableEntityTypes = 425,
+    DamageOnSingleStructure = 437,
+    Interval = 755,
+    TotalDamagePerInterval = 756,
 }

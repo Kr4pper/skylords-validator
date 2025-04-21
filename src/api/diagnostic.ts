@@ -3,19 +3,27 @@ import {CardIds} from './card-ids';
 export enum DiagnosticType {
     Dp20Mismatch = 'Dp20Mismatch',
     HardCodedAttackRate = 'HardCodedAttackRate',
+    UnsupportedEntity = 'UnsupportedEntity',
+    MultipleSquadModesFound = 'MultipleSquadModesFound',
+    MultipleModeSpellsFound = 'MultipleModeSpellsFound',
 }
 
-const bla: DiagnosticContainer = {card: {id: CardIds.GiantWyrmU0, name: 'giant wyrm'}, diag: {type: DiagnosticType.Dp20Mismatch, listedDp20: 1, expectedDp20: 2}};
+export type Diagnostic = (
+    | {type: DiagnosticType.Dp20Mismatch;} & Dp20Mismatch
+    | {type: DiagnosticType.HardCodedAttackRate;} & HardCodedAttackRate
+    | {type: DiagnosticType.UnsupportedEntity;} & UnsupportedEntity
+    | {type: DiagnosticType.MultipleSquadModesFound;} & MultipleSquadModesFound
+    | {type: DiagnosticType.MultipleModeSpellsFound;} & MultipleModeSpellsFound
+);
 
-export type DiagnosticContainer = DiagnosticBase & {
-    diag: (
-        | {type: DiagnosticType.Dp20Mismatch;} & Dp20Mismatch
-        | {type: DiagnosticType.HardCodedAttackRate;} & HardCodedAttackRate
-    );
-};
-
-type DiagnosticBase = {card: {id: CardIds; name: string;};};
+export type DiagnosticContainer = {card: {id: CardIds; name: string;}, diag: Diagnostic;};
 
 type Dp20Mismatch = {listedDp20: number, expectedDp20: number;};
 
 type HardCodedAttackRate = {translationText: string;};
+
+type MultipleSquadModesFound = {modeIds: number[];};
+
+type MultipleModeSpellsFound = {spellIds: number[];};
+
+type UnsupportedEntity = {entity: string;};

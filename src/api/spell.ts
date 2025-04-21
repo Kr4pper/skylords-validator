@@ -50,5 +50,9 @@ export enum SpellParameterId {
     DamageAgainstFigures = 130,
     DamageAgainstBuildings = 131,
     DamageAgainstWalls = 137,
+    Projectile = 278,
+    FlameThrower = 371,
+    GainOnTrueSourceFalseTarget = 383,
+    GainOnTrueAreaUnderTarget = 384, // unsure
     AbilityToGain = 386,  // used by some ranged units to deal dmg, also Ids 464..468
 }
