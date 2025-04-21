@@ -1,0 +1,252 @@
+WARN  Sunstriders (id:346) -> Dp20Mismatch {"listedDp20":432,"expectedDp20":430}
+WARN  Sunstriders (id:2000346) -> Dp20Mismatch {"listedDp20":528,"expectedDp20":530}
+WARN  Sunstriders (id:3000346) -> Dp20Mismatch {"listedDp20":576,"expectedDp20":575}
+no rounding applied in game
+
+WARN  White Rangers (id:357) -> Dp20Mismatch {"listedDp20":439.79999999999995,"expectedDp20":530}
+WARN  White Rangers (id:1000357) -> Dp20Mismatch {"listedDp20":439.79999999999995,"expectedDp20":530}
+WARN  White Rangers (id:2000357) -> Dp20Mismatch {"listedDp20":439.79999999999995,"expectedDp20":530}
+WARN  White Rangers (id:3000357) -> Dp20Mismatch {"listedDp20":439.79999999999995,"expectedDp20":530}
+atk rate seems to be 2500 rather than the listed 3000
+hardcoded atk rate lead to wrong listed dp20?
+
+WARN  Frost Sorceress (id:364) -> Dp20Mismatch {"listedDp20":220,"expectedDp20":280}
+WARN  Frost Sorceress (id:1000364) -> Dp20Mismatch {"listedDp20":235,"expectedDp20":300}
+WARN  Frost Sorceress (id:2000364) -> Dp20Mismatch {"listedDp20":265,"expectedDp20":330}
+WARN  Frost Sorceress (id:3000364) -> Dp20Mismatch {"listedDp20":290,"expectedDp20":365}
+listed atk rate of 1900 confirmed with 60s test in game, but files suggest atk rate 1510 // ability 962 has DurationSteps=300
+
+WARN  Frost Mage (id:367) -> Dp20Mismatch {"listedDp20":360,"expectedDp20":355}
+WARN  Frost Mage (id:1000367) -> Dp20Mismatch {"listedDp20":380,"expectedDp20":375}
+slightly wrong values in game // is the avg dmg (57+85)/2=71 or 57*1.25=71.25?
+
+WARN  Firedancer (id:378) -> Dp20Mismatch {"listedDp20":740,"expectedDp20":730}
+WARN  Firedancer (id:1000378) -> Dp20Mismatch {"listedDp20":740,"expectedDp20":730}
+WARN  Firedancer (id:2000378) -> Dp20Mismatch {"listedDp20":740,"expectedDp20":730}
+WARN  Firedancer (id:3000378) -> Dp20Mismatch {"listedDp20":740,"expectedDp20":730}
+listed dp20 seems to be based on atk rate of 3500 (cast+recast/resolve) but listed on card is 4s and 4s observed in game as well
+-> how does unit get bumped up to atk rate 4000 in game?
+-> dp20 should be lower?
+
+WARN  Timeless One (id:402) -> Dp20Mismatch {"listedDp20":480,"expectedDp20":460}
+WARN  Timeless One (id:1000402) -> Dp20Mismatch {"listedDp20":510,"expectedDp20":500}
+has listed atk rate 3000 but based on code it should be 2500, observed in game is roughly 2600
+listed dp20 is based on atk rate 2500 and slightly wrong on top of that
+
+WARN  Shadow Mage (id:405) -> Dp20Mismatch {"listedDp20":1435,"expectedDp20":1455}
+WARN  Shadow Mage (id:1000405) -> Dp20Mismatch {"listedDp20":1500,"expectedDp20":1530}
+WARN  Shadow Mage (id:2000405) -> Dp20Mismatch {"listedDp20":1670,"expectedDp20":1695}
+WARN  Shadow Mage (id:3000405) -> Dp20Mismatch {"listedDp20":1840,"expectedDp20":1860}
+listed atk rate 4000 but in code its 3955, but dp20 based on atk rate 4000
+
+WARN  Skyelf Templar (id:524) -> Dp20Mismatch {"listedDp20":1470,"expectedDp20":1345}
+WARN  Skyelf Templar (id:1000524) -> Dp20Mismatch {"listedDp20":1470,"expectedDp20":1345}
+WARN  Skyelf Templar (id:2000524) -> Dp20Mismatch {"listedDp20":1470,"expectedDp20":1345}
+WARN  Skyelf Templar (id:3000524) -> Dp20Mismatch {"listedDp20":1470,"expectedDp20":1345}
+WARN  Skyelf Commander (id:526) -> Dp20Mismatch {"listedDp20":1660,"expectedDp20":1515}
+WARN  Skyelf Commander (id:1000526) -> Dp20Mismatch {"listedDp20":1660,"expectedDp20":1515}
+WARN  Skyelf Commander (id:2000526) -> Dp20Mismatch {"listedDp20":1660,"expectedDp20":1515}
+WARN  Skyelf Commander (id:3000526) -> Dp20Mismatch {"listedDp20":1660,"expectedDp20":1515}
+WARN  Skyelf Sage (id:527) -> Dp20Mismatch {"listedDp20":1300,"expectedDp20":1190}
+WARN  Skyelf Sage (id:1000527) -> Dp20Mismatch {"listedDp20":1375,"expectedDp20":1255}
+WARN  Skyelf Sage (id:2000527) -> Dp20Mismatch {"listedDp20":1530,"expectedDp20":1400}
+WARN  Skyelf Sage (id:3000527) -> Dp20Mismatch {"listedDp20":1645,"expectedDp20":1505}
+WARN  Primeval Watcher (id:550) -> Dp20Mismatch {"listedDp20":7220,"expectedDp20":10045}
+WARN  Primeval Watcher (id:1000550) -> Dp20Mismatch {"listedDp20":7220,"expectedDp20":10045}
+WARN  Primeval Watcher (id:2000550) -> Dp20Mismatch {"listedDp20":7220,"expectedDp20":10045}
+WARN  Primeval Watcher (id:3000550) -> Dp20Mismatch {"listedDp20":7220,"expectedDp20":10045}
+WARN  Cultist Master (id:562) -> Dp20Mismatch {"listedDp20":615,"expectedDp20":600}
+WARN  Cultist Master (id:3000562) -> Dp20Mismatch {"listedDp20":770,"expectedDp20":775}
+WARN  War Eagle (id:661) -> Dp20Mismatch {"listedDp20":1400,"expectedDp20":1380}
+WARN  War Eagle (id:1000661) -> Dp20Mismatch {"listedDp20":1400,"expectedDp20":1380}
+WARN  War Eagle (id:2000661) -> Dp20Mismatch {"listedDp20":1400,"expectedDp20":1380}
+WARN  War Eagle (id:3000661) -> Dp20Mismatch {"listedDp20":1400,"expectedDp20":1380}
+WARN  Shadow Phoenix (id:663) -> Dp20Mismatch {"listedDp20":1500,"expectedDp20":4165}
+WARN  Shadow Phoenix (id:1000663) -> Dp20Mismatch {"listedDp20":1500,"expectedDp20":4165}
+WARN  Shadow Phoenix (id:2000663) -> Dp20Mismatch {"listedDp20":1500,"expectedDp20":4165}
+WARN  Shadow Phoenix (id:3000663) -> Dp20Mismatch {"listedDp20":1500,"expectedDp20":4585}
+WARN  Fallen Skyelf (id:664) -> Dp20Mismatch {"listedDp20":1560,"expectedDp20":1430}
+WARN  Fallen Skyelf (id:1000664) -> Dp20Mismatch {"listedDp20":1560,"expectedDp20":1430}
+WARN  Fallen Skyelf (id:2000664) -> Dp20Mismatch {"listedDp20":1560,"expectedDp20":1430}
+WARN  Fallen Skyelf (id:3000664) -> Dp20Mismatch {"listedDp20":1560,"expectedDp20":1430}
+WARN  Fire Dragon (id:1000677) -> Dp20Mismatch {"listedDp20":2270,"expectedDp20":2275}
+WARN  Fire Dragon (id:2000677) -> Dp20Mismatch {"listedDp20":2500,"expectedDp20":2505}
+WARN  Fire Dragon (id:3000677) -> Dp20Mismatch {"listedDp20":2750,"expectedDp20":2760}
+WARN  Swamp Drake (id:707) -> Dp20Mismatch {"listedDp20":1770,"expectedDp20":1775}
+WARN  Swamp Drake (id:1000707) -> Dp20Mismatch {"listedDp20":1770,"expectedDp20":1775}
+WARN  Swamp Drake (id:2000707) -> Dp20Mismatch {"listedDp20":1770,"expectedDp20":1775}
+WARN  Swamp Drake (id:3000707) -> Dp20Mismatch {"listedDp20":1770,"expectedDp20":1775}
+WARN  Giant Wyrm (id:708) -> Dp20Mismatch {"listedDp20":4000,"expectedDp20":4300}
+WARN  Giant Wyrm (id:1000708) -> Dp20Mismatch {"listedDp20":4230,"expectedDp20":4550}
+WARN  Giant Wyrm (id:2000708) -> Dp20Mismatch {"listedDp20":4650,"expectedDp20":5015}
+WARN  Giant Wyrm (id:3000708) -> Dp20Mismatch {"listedDp20":5115,"expectedDp20":5515}
+WARN  Fire Worm (id:709) -> Dp20Mismatch {"listedDp20":4000,"expectedDp20":4800}
+WARN  Fire Worm (id:1000709) -> Dp20Mismatch {"listedDp20":4000,"expectedDp20":4800}
+WARN  Fire Worm (id:2000709) -> Dp20Mismatch {"listedDp20":4000,"expectedDp20":4800}
+WARN  Fire Worm (id:3000709) -> Dp20Mismatch {"listedDp20":4000,"expectedDp20":4800}
+WARN  Spitfire (id:778) -> Dp20Mismatch {"listedDp20":5880,"expectedDp20":2090}
+WARN  Spitfire (id:1000778) -> Dp20Mismatch {"listedDp20":5980,"expectedDp20":2200}
+WARN  Spitfire (id:2000778) -> Dp20Mismatch {"listedDp20":6130,"expectedDp20":2370}
+WARN  Spitfire (id:3000778) -> Dp20Mismatch {"listedDp20":6330,"expectedDp20":2590}
+WARN  Firedancer (Promo) (id:2001021) -> Dp20Mismatch {"listedDp20":740,"expectedDp20":730}
+WARN  Swamp Drake (Promo) (id:2001031) -> Dp20Mismatch {"listedDp20":1770,"expectedDp20":1775}
+WARN  Fallen Skyelf (Promo) (id:2001034) -> Dp20Mismatch {"listedDp20":1560,"expectedDp20":1430}
+WARN  Stormsinger (Fire affinity) (id:1119) -> Dp20Mismatch {"listedDp20":555,"expectedDp20":560}
+WARN  Stormsinger (Fire affinity) (id:1001119) -> Dp20Mismatch {"listedDp20":555,"expectedDp20":560}
+WARN  Stormsinger (Fire affinity) (id:2001119) -> Dp20Mismatch {"listedDp20":555,"expectedDp20":560}
+WARN  Stormsinger (Fire affinity) (id:3001119) -> Dp20Mismatch {"listedDp20":555,"expectedDp20":560}
+WARN  Core Dredge (Frost affinity) (id:1120) -> Dp20Mismatch {"listedDp20":2880,"expectedDp20":2765}
+WARN  Core Dredge (Frost affinity) (id:1001120) -> Dp20Mismatch {"listedDp20":2930,"expectedDp20":2815}
+WARN  Core Dredge (Frost affinity) (id:2001120) -> Dp20Mismatch {"listedDp20":3050,"expectedDp20":2930}
+WARN  Core Dredge (Frost affinity) (id:3001120) -> Dp20Mismatch {"listedDp20":3325,"expectedDp20":3195}
+WARN  Gladiatrix (Nature affinity) (id:1122) -> Dp20Mismatch {"listedDp20":780,"expectedDp20":785}
+WARN  Gladiatrix (Nature affinity) (id:1001122) -> Dp20Mismatch {"listedDp20":800,"expectedDp20":810}
+WARN  Gladiatrix (Nature affinity) (id:2001122) -> Dp20Mismatch {"listedDp20":830,"expectedDp20":840}
+WARN  Gladiatrix (Nature affinity) (id:3001122) -> Dp20Mismatch {"listedDp20":875,"expectedDp20":885}
+WARN  Spirit Hunters (Nature affinity) (id:1123) -> Dp20Mismatch {"listedDp20":192,"expectedDp20":190}
+WARN  Spirit Hunters (Nature affinity) (id:1001123) -> Dp20Mismatch {"listedDp20":192,"expectedDp20":190}
+WARN  Spirit Hunters (Nature affinity) (id:2001123) -> Dp20Mismatch {"listedDp20":192,"expectedDp20":190}
+WARN  Spirit Hunters (Nature affinity) (id:3001123) -> Dp20Mismatch {"listedDp20":192,"expectedDp20":190}
+WARN  Snapjaws (Fire affinity) (id:1132) -> Dp20Mismatch {"listedDp20":193.103456,"expectedDp20":190}
+WARN  Snapjaws (Fire affinity) (id:1001132) -> Dp20Mismatch {"listedDp20":193.103456,"expectedDp20":190}
+WARN  Snapjaws (Fire affinity) (id:2001132) -> Dp20Mismatch {"listedDp20":193.103456,"expectedDp20":190}
+WARN  Snapjaws (Fire affinity) (id:3001132) -> Dp20Mismatch {"listedDp20":193.103456,"expectedDp20":190}
+WARN  Bandit Windhunter (Shadow affinity) (id:1200) -> Dp20Mismatch {"listedDp20":1380,"expectedDp20":1385}
+WARN  Bandit Windhunter (Shadow affinity) (id:1001200) -> Dp20Mismatch {"listedDp20":1380,"expectedDp20":1385}
+WARN  Bandit Windhunter (Shadow affinity) (id:2001200) -> Dp20Mismatch {"listedDp20":1380,"expectedDp20":1385}
+WARN  Bandit Windhunter (Shadow affinity) (id:3001200) -> Dp20Mismatch {"listedDp20":1380,"expectedDp20":1385}
+WARN  Deathglider (Nature affinity) (id:1224) -> Dp20Mismatch {"listedDp20":430,"expectedDp20":425}
+WARN  Deathglider (Nature affinity) (id:1001224) -> Dp20Mismatch {"listedDp20":455,"expectedDp20":450}
+WARN  Deathglider (Nature affinity) (id:2001224) -> Dp20Mismatch {"listedDp20":500,"expectedDp20":495}
+WARN  Deathglider (Nature affinity) (id:3001224) -> Dp20Mismatch {"listedDp20":550,"expectedDp20":545}
+WARN  Skycatcher (Nature affinity) (id:1226) -> Dp20Mismatch {"listedDp20":5000,"expectedDp20":5015}
+WARN  Skycatcher (Nature affinity) (id:1001226) -> Dp20Mismatch {"listedDp20":5000,"expectedDp20":5015}
+WARN  Skycatcher (Nature affinity) (id:2001226) -> Dp20Mismatch {"listedDp20":5000,"expectedDp20":5015}
+WARN  Skycatcher (Nature affinity) (id:3001226) -> Dp20Mismatch {"listedDp20":5000,"expectedDp20":5015}
+WARN  Firesworn (Frost affinity) (id:1237) -> Dp20Mismatch {"listedDp20":660,"expectedDp20":665}
+WARN  Firesworn (Frost affinity) (id:1001237) -> Dp20Mismatch {"listedDp20":660,"expectedDp20":665}
+WARN  Firesworn (Frost affinity) (id:2001237) -> Dp20Mismatch {"listedDp20":660,"expectedDp20":665}
+WARN  Firesworn (Frost affinity) (id:3001237) -> Dp20Mismatch {"listedDp20":660,"expectedDp20":665}
+WARN  Stormsinger (Nature affinity) (id:1278) -> Dp20Mismatch {"listedDp20":555,"expectedDp20":560}
+WARN  Stormsinger (Nature affinity) (id:1001278) -> Dp20Mismatch {"listedDp20":555,"expectedDp20":560}
+WARN  Stormsinger (Nature affinity) (id:2001278) -> Dp20Mismatch {"listedDp20":555,"expectedDp20":560}
+WARN  Stormsinger (Nature affinity) (id:3001278) -> Dp20Mismatch {"listedDp20":555,"expectedDp20":560}
+WARN  Core Dredge (Fire affinity) (id:1279) -> Dp20Mismatch {"listedDp20":2880,"expectedDp20":2765}
+WARN  Core Dredge (Fire affinity) (id:1001279) -> Dp20Mismatch {"listedDp20":2930,"expectedDp20":2815}
+WARN  Core Dredge (Fire affinity) (id:2001279) -> Dp20Mismatch {"listedDp20":3050,"expectedDp20":2930}
+WARN  Core Dredge (Fire affinity) (id:3001279) -> Dp20Mismatch {"listedDp20":3325,"expectedDp20":3195}
+WARN  Gladiatrix (Shadow affinity) (id:1285) -> Dp20Mismatch {"listedDp20":780,"expectedDp20":785}
+WARN  Gladiatrix (Shadow affinity) (id:1001285) -> Dp20Mismatch {"listedDp20":800,"expectedDp20":810}
+WARN  Gladiatrix (Shadow affinity) (id:2001285) -> Dp20Mismatch {"listedDp20":830,"expectedDp20":840}
+WARN  Gladiatrix (Shadow affinity) (id:3001285) -> Dp20Mismatch {"listedDp20":875,"expectedDp20":885}
+WARN  Spirit Hunters (Shadow affinity) (id:1295) -> Dp20Mismatch {"listedDp20":192,"expectedDp20":190}
+WARN  Spirit Hunters (Shadow affinity) (id:1001295) -> Dp20Mismatch {"listedDp20":192,"expectedDp20":190}
+WARN  Spirit Hunters (Shadow affinity) (id:2001295) -> Dp20Mismatch {"listedDp20":192,"expectedDp20":190}
+WARN  Spirit Hunters (Shadow affinity) (id:3001295) -> Dp20Mismatch {"listedDp20":192,"expectedDp20":190}
+WARN  Snapjaws (Shadow affinity) (id:1307) -> Dp20Mismatch {"listedDp20":193.103456,"expectedDp20":190}
+WARN  Snapjaws (Shadow affinity) (id:1001307) -> Dp20Mismatch {"listedDp20":193.103456,"expectedDp20":190}
+WARN  Snapjaws (Shadow affinity) (id:2001307) -> Dp20Mismatch {"listedDp20":193.103456,"expectedDp20":190}
+WARN  Snapjaws (Shadow affinity) (id:3001307) -> Dp20Mismatch {"listedDp20":193.103456,"expectedDp20":190}
+WARN  Bandit Windhunter (Nature affinity) (id:1317) -> Dp20Mismatch {"listedDp20":1380,"expectedDp20":1385}
+WARN  Bandit Windhunter (Nature affinity) (id:1001317) -> Dp20Mismatch {"listedDp20":1380,"expectedDp20":1385}
+WARN  Bandit Windhunter (Nature affinity) (id:2001317) -> Dp20Mismatch {"listedDp20":1380,"expectedDp20":1385}
+WARN  Bandit Windhunter (Nature affinity) (id:3001317) -> Dp20Mismatch {"listedDp20":1380,"expectedDp20":1385}
+WARN  Northland Drake (Fire affinity) (id:1343) -> Dp20Mismatch {"listedDp20":3570,"expectedDp20":3580}
+WARN  Northland Drake (Fire affinity) (id:1001343) -> Dp20Mismatch {"listedDp20":3570,"expectedDp20":3580}
+WARN  Northland Drake (Fire affinity) (id:2001343) -> Dp20Mismatch {"listedDp20":3570,"expectedDp20":3580}
+WARN  Northland Drake (Fire affinity) (id:3001343) -> Dp20Mismatch {"listedDp20":3570,"expectedDp20":3580}
+WARN  Grim Bahir (Fire affinity) (id:1345) -> Dp20Mismatch {"listedDp20":3590,"expectedDp20":3580}
+WARN  Grim Bahir (Fire affinity) (id:1001345) -> Dp20Mismatch {"listedDp20":3590,"expectedDp20":3580}
+WARN  Grim Bahir (Fire affinity) (id:2001345) -> Dp20Mismatch {"listedDp20":3590,"expectedDp20":3580}
+WARN  Grim Bahir (Fire affinity) (id:3001345) -> Dp20Mismatch {"listedDp20":3590,"expectedDp20":3580}
+WARN  Firesworn (Fire affinity) (id:1386) -> Dp20Mismatch {"listedDp20":660,"expectedDp20":665}
+WARN  Firesworn (Fire affinity) (id:1001386) -> Dp20Mismatch {"listedDp20":660,"expectedDp20":665}
+WARN  Firesworn (Fire affinity) (id:2001386) -> Dp20Mismatch {"listedDp20":660,"expectedDp20":665}
+WARN  Firesworn (Fire affinity) (id:3001386) -> Dp20Mismatch {"listedDp20":660,"expectedDp20":665}
+WARN  Grim Bahir (Nature affinity) (id:1409) -> Dp20Mismatch {"listedDp20":3590,"expectedDp20":3580}
+WARN  Grim Bahir (Nature affinity) (id:1001409) -> Dp20Mismatch {"listedDp20":3590,"expectedDp20":3580}
+WARN  Grim Bahir (Nature affinity) (id:2001409) -> Dp20Mismatch {"listedDp20":3590,"expectedDp20":3580}
+WARN  Grim Bahir (Nature affinity) (id:3001409) -> Dp20Mismatch {"listedDp20":3590,"expectedDp20":3580}
+WARN  Lost Dancer (Shadow affinity) (id:1412) -> Dp20Mismatch {"listedDp20":830,"expectedDp20":835}
+WARN  Lost Dancer (Shadow affinity) (id:1001412) -> Dp20Mismatch {"listedDp20":830,"expectedDp20":835}
+WARN  Lost Dancer (Shadow affinity) (id:2001412) -> Dp20Mismatch {"listedDp20":830,"expectedDp20":835}
+WARN  Lost Dancer (Shadow affinity) (id:3001412) -> Dp20Mismatch {"listedDp20":830,"expectedDp20":835}
+WARN  Lost Dancer (Fire affinity) (id:1480) -> Dp20Mismatch {"listedDp20":830,"expectedDp20":835}
+WARN  Lost Dancer (Fire affinity) (id:1001480) -> Dp20Mismatch {"listedDp20":830,"expectedDp20":835}
+WARN  Lost Dancer (Fire affinity) (id:2001480) -> Dp20Mismatch {"listedDp20":830,"expectedDp20":835}
+WARN  Lost Dancer (Fire affinity) (id:3001480) -> Dp20Mismatch {"listedDp20":830,"expectedDp20":835}
+WARN  Northland Drake (Frost affinity) (id:1482) -> Dp20Mismatch {"listedDp20":3570,"expectedDp20":3580}
+WARN  Northland Drake (Frost affinity) (id:1001482) -> Dp20Mismatch {"listedDp20":3570,"expectedDp20":3580}
+WARN  Northland Drake (Frost affinity) (id:2001482) -> Dp20Mismatch {"listedDp20":3570,"expectedDp20":3580}
+WARN  Northland Drake (Frost affinity) (id:3001482) -> Dp20Mismatch {"listedDp20":3570,"expectedDp20":3580}
+WARN  Deathglider (Frost affinity) (id:1486) -> Dp20Mismatch {"listedDp20":430,"expectedDp20":425}
+WARN  Deathglider (Frost affinity) (id:1001486) -> Dp20Mismatch {"listedDp20":455,"expectedDp20":450}
+WARN  Deathglider (Frost affinity) (id:2001486) -> Dp20Mismatch {"listedDp20":500,"expectedDp20":495}
+WARN  Deathglider (Frost affinity) (id:3001486) -> Dp20Mismatch {"listedDp20":550,"expectedDp20":545}
+WARN  Skycatcher (Frost affinity) (id:1487) -> Dp20Mismatch {"listedDp20":5000,"expectedDp20":5015}
+WARN  Skycatcher (Frost affinity) (id:1001487) -> Dp20Mismatch {"listedDp20":5000,"expectedDp20":5015}
+WARN  Skycatcher (Frost affinity) (id:2001487) -> Dp20Mismatch {"listedDp20":5000,"expectedDp20":5015}
+WARN  Skycatcher (Frost affinity) (id:3001487) -> Dp20Mismatch {"listedDp20":5000,"expectedDp20":5015}
+WARN  QueekQueek (Player Card) (id:1531) -> Dp20Mismatch {"listedDp20":640,"expectedDp20":695}
+WARN  QueekQueek (Player Card) (id:1001531) -> Dp20Mismatch {"listedDp20":640,"expectedDp20":695}
+WARN  QueekQueek (Player Card) (id:2001531) -> Dp20Mismatch {"listedDp20":640,"expectedDp20":695}
+WARN  QueekQueek (Player Card) (id:3001531) -> Dp20Mismatch {"listedDp20":640,"expectedDp20":695}
+WARN  Lost Horror (Nature affinity) (id:1543) -> Dp20Mismatch {"listedDp20":1870,"expectedDp20":1875}
+WARN  Lost Horror (Nature affinity) (id:1001543) -> Dp20Mismatch {"listedDp20":1870,"expectedDp20":1875}
+WARN  Lost Horror (Nature affinity) (id:2001543) -> Dp20Mismatch {"listedDp20":1870,"expectedDp20":1875}
+WARN  Lost Horror (Nature affinity) (id:3001543) -> Dp20Mismatch {"listedDp20":1870,"expectedDp20":1875}
+WARN  Lost Dragon (Nature affinity) (id:1544) -> Dp20Mismatch {"listedDp20":3715,"expectedDp20":3725}
+WARN  Lost Dragon (Nature affinity) (id:1001544) -> Dp20Mismatch {"listedDp20":3715,"expectedDp20":3725}
+WARN  Lost Dragon (Nature affinity) (id:2001544) -> Dp20Mismatch {"listedDp20":3715,"expectedDp20":3725}
+WARN  Lost Dragon (Nature affinity) (id:3001544) -> Dp20Mismatch {"listedDp20":3715,"expectedDp20":3725}
+WARN  Lost Dragon (Shadow affinity) (id:1545) -> Dp20Mismatch {"listedDp20":3715,"expectedDp20":3725}
+WARN  Lost Dragon (Shadow affinity) (id:1001545) -> Dp20Mismatch {"listedDp20":3715,"expectedDp20":3725}
+WARN  Lost Dragon (Shadow affinity) (id:2001545) -> Dp20Mismatch {"listedDp20":3715,"expectedDp20":3725}
+WARN  Lost Dragon (Shadow affinity) (id:3001545) -> Dp20Mismatch {"listedDp20":3715,"expectedDp20":3725}
+WARN  Lost Horror (Fire affinity) (id:1558) -> Dp20Mismatch {"listedDp20":1870,"expectedDp20":1875}
+WARN  Lost Horror (Fire affinity) (id:1001558) -> Dp20Mismatch {"listedDp20":1870,"expectedDp20":1875}
+WARN  Lost Horror (Fire affinity) (id:2001558) -> Dp20Mismatch {"listedDp20":1870,"expectedDp20":1875}
+WARN  Lost Horror (Fire affinity) (id:3001558) -> Dp20Mismatch {"listedDp20":1870,"expectedDp20":1875}
+WARN  Bandit Sorceress (Frost affinity) (id:1616) -> Dp20Mismatch {"listedDp20":550,"expectedDp20":440}
+WARN  Bandit Sorceress (Frost affinity) (id:1001616) -> Dp20Mismatch {"listedDp20":600,"expectedDp20":480}
+WARN  Bandit Sorceress (Frost affinity) (id:2001616) -> Dp20Mismatch {"listedDp20":600,"expectedDp20":480}
+WARN  Bandit Sorceress (Frost affinity) (id:3001616) -> Dp20Mismatch {"listedDp20":600,"expectedDp20":480}
+listed dp20 based on atk rate of 2000 but listed atk rate is 3000 and based on code its 2500
+
+WARN  Twilight Hag (Nature affinity) (id:1619) -> Dp20Mismatch {"listedDp20":1030,"expectedDp20":1035}
+WARN  Twilight Hag (Nature affinity) (id:1001619) -> Dp20Mismatch {"listedDp20":1030,"expectedDp20":1035}
+WARN  Twilight Hag (Nature affinity) (id:2001619) -> Dp20Mismatch {"listedDp20":1030,"expectedDp20":1035}
+WARN  Twilight Hag (Nature affinity) (id:3001619) -> Dp20Mismatch {"listedDp20":1030,"expectedDp20":1035}
+WARN  Bandit Sorceress (Fire affinity) (id:1620) -> Dp20Mismatch {"listedDp20":550,"expectedDp20":440}
+WARN  Bandit Sorceress (Fire affinity) (id:1001620) -> Dp20Mismatch {"listedDp20":600,"expectedDp20":480}
+WARN  Bandit Sorceress (Fire affinity) (id:2001620) -> Dp20Mismatch {"listedDp20":600,"expectedDp20":480}
+WARN  Bandit Sorceress (Fire affinity) (id:3001620) -> Dp20Mismatch {"listedDp20":600,"expectedDp20":480}
+WARN  Twilight Hag (Fire affinity) (id:1622) -> Dp20Mismatch {"listedDp20":1030,"expectedDp20":1035}
+WARN  Twilight Hag (Fire affinity) (id:1001622) -> Dp20Mismatch {"listedDp20":1030,"expectedDp20":1035}
+WARN  Twilight Hag (Fire affinity) (id:2001622) -> Dp20Mismatch {"listedDp20":1030,"expectedDp20":1035}
+WARN  Twilight Hag (Fire affinity) (id:3001622) -> Dp20Mismatch {"listedDp20":1030,"expectedDp20":1035}
+WARN  Snapjaws (Promo) (Fire affinity) (id:2001642) -> Dp20Mismatch {"listedDp20":193.103456,"expectedDp20":190}
+WARN  Wasteland Terror (Fire affinity) (id:1678) -> Dp20Mismatch {"listedDp20":5110,"expectedDp20":5120}
+WARN  Wasteland Terror (Fire affinity) (id:1001678) -> Dp20Mismatch {"listedDp20":5285,"expectedDp20":5300}
+WARN  Wasteland Terror (Fire affinity) (id:2001678) -> Dp20Mismatch {"listedDp20":5550,"expectedDp20":5570}
+WARN  Wasteland Terror (Fire affinity) (id:3001678) -> Dp20Mismatch {"listedDp20":5890,"expectedDp20":5910}
+WARN  Wasteland Terror (Nature affinity) (id:1679) -> Dp20Mismatch {"listedDp20":5110,"expectedDp20":5120}
+WARN  Wasteland Terror (Nature affinity) (id:1001679) -> Dp20Mismatch {"listedDp20":5285,"expectedDp20":5300}
+WARN  Wasteland Terror (Nature affinity) (id:2001679) -> Dp20Mismatch {"listedDp20":5550,"expectedDp20":5570}
+WARN  Wasteland Terror (Nature affinity) (id:3001679) -> Dp20Mismatch {"listedDp20":5890,"expectedDp20":5910}
+WARN  Evil Eye (id:1684) -> Dp20Mismatch {"listedDp20":3500,"expectedDp20":1750}
+WARN  Evil Eye (id:1001684) -> Dp20Mismatch {"listedDp20":3700,"expectedDp20":1850}
+WARN  Evil Eye (id:2001684) -> Dp20Mismatch {"listedDp20":4000,"expectedDp20":2000}
+WARN  Evil Eye (id:3001684) -> Dp20Mismatch {"listedDp20":4000,"expectedDp20":2000}
+WARN  Lost Manabeast (id:1693) -> Dp20Mismatch {"listedDp20":1920,"expectedDp20":2060}
+WARN  Lost Manabeast (id:1001693) -> Dp20Mismatch {"listedDp20":1920,"expectedDp20":2060}
+WARN  Lost Manabeast (id:2001693) -> Dp20Mismatch {"listedDp20":1920,"expectedDp20":2060}
+WARN  Lost Manabeast (id:3001693) -> Dp20Mismatch {"listedDp20":1920,"expectedDp20":2060}
+WARN  Bedrock (Frost affinity) (id:1695) -> Dp20Mismatch {"listedDp20":4780,"expectedDp20":4525}
+WARN  Bedrock (Frost affinity) (id:1001695) -> Dp20Mismatch {"listedDp20":4940,"expectedDp20":4685}
+WARN  Bedrock (Frost affinity) (id:2001695) -> Dp20Mismatch {"listedDp20":4940,"expectedDp20":4685}
+WARN  Bedrock (Frost affinity) (id:3001695) -> Dp20Mismatch {"listedDp20":5280,"expectedDp20":5000}
+WARN  Bedrock (Shadow affinity) (id:1696) -> Dp20Mismatch {"listedDp20":4780,"expectedDp20":4525}
+WARN  Bedrock (Shadow affinity) (id:1001696) -> Dp20Mismatch {"listedDp20":4940,"expectedDp20":4685}
+WARN  Bedrock (Shadow affinity) (id:2001696) -> Dp20Mismatch {"listedDp20":4940,"expectedDp20":4685}
+WARN  Bedrock (Shadow affinity) (id:3001696) -> Dp20Mismatch {"listedDp20":5280,"expectedDp20":5000}

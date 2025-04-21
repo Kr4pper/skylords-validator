@@ -23,9 +23,9 @@ const toU0 = (id: number) => {
     return id;
 };
 
-const toProcess = Object.values(playerCards);
-//const toProcess = [{U0: playerCards.EvilEye.U0}];
-//const toProcess = [playerCards.GiantWyrm];
+//const toProcess = Object.values(playerCards);
+//const toProcess = [{U0: playerCards.TimelessOne.U0}];
+const toProcess = [playerCards.BanditSorceressAFrost];
 
 const diagnostics: DiagnosticContainer[] = [];
 const okayList: {id: CardIds, name: string;}[] = [];
@@ -94,7 +94,7 @@ try {
             logger.debug({squadUnit});
 
             const listedHealth = squadUnit.Health * squadSize;
-            const listedDp20 = squadUnit.Archive.Damage * squadSize;
+            const listedDp20 = Math.round(squadUnit.Archive.Damage * squadSize);
             logger.debug({listedDp20, listedHealth});
 
             if (listedDp20 === 0) {
@@ -314,7 +314,7 @@ try {
 
             const expectedDp20 = squadSize * (minDmg + maxDmg) / 2 * 20 / attackRate * 1000;
             const expectedDp20RoundedTo5 = Math.round(5 * Math.round(expectedDp20 / 5));
-            const result = {name: cardName, upgrade: Math.round(cardId / 1_000_000), listedDp20, listedHealth, attackRate, minDmg, maxDmg, expectedDp20: expectedDp20RoundedTo5, squadSize};
+            const result = {name: cardName, upgrade: Math.round(cardId / 1_000_000), listedDp20, listedHealth, attackRate, minDmg, maxDmg, expectedDp20, expectedDp20RoundedTo5, squadSize};
             logger.debug(result);
 
             if (listedDp20 !== expectedDp20RoundedTo5) {
@@ -334,8 +334,8 @@ try {
 const withoutTypeEntry = ({type, ...content}: Diagnostic) => content;
 const prettifyDiagnostic = (diagnostic: DiagnosticContainer) => `${diagnostic.card.name} (id:${diagnostic.card.id}) -> ${diagnostic.diag.type} ${JSON.stringify(withoutTypeEntry(diagnostic.diag))}`;
 
-//diagnostics.forEach(d => logger.warn(prettifyDiagnostic(d)));
-logger.warn(`${diagnostics.length} diagnostics`);
+diagnostics.filter(d => d.diag.type === DiagnosticType.Dp20Mismatch).forEach(d => logger.warn(prettifyDiagnostic(d)));
 
+logger.warn(`${diagnostics.length} diagnostics`);
 //okayList.forEach(o => logger.debug(`OKAY ${o.name} (id:${o.id})`));
 logger.info(`${okayList.length} cards okay`);
