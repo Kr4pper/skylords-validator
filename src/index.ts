@@ -1,5 +1,5 @@
 import {existsSync} from 'fs';
-import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId} from './api';
+import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType} from './api';
 import {loadGameData, loadLanguageTable, logger} from './util';
 
 const dbPath = process.argv[3];
@@ -23,7 +23,8 @@ const toU0 = (id: number) => {
     return id;
 };
 
-const toProcess = [playerCards.MasterArchers];
+//const toProcess = Object.values(playerCards);
+const toProcess = [{U0: playerCards.CommandosAShadow.U0}];
 
 for (const upgrades of toProcess) {
     const cardName = cardDescriptions.get(upgrades.U0).Name;
@@ -31,6 +32,23 @@ for (const upgrades of toProcess) {
 
     for (const upgrade of Object.values(upgrades)) {
         const card = cards.get(upgrade);
+        logger.debug({card});
+
+        if (card.Type === CardType.Spell) {
+            logger.debug('spell detected, aborting');
+            continue;
+        }
+
+        /**
+         * Squads
+         * card -> squad by DBEntityId [dmg,hp] -> mode -> spell [cast,resolve,recast] -> parameter -> projectile -> spell -> parameter [dmg,combined dmg]
+         */
+
+        /**
+         * Buildings
+         * card -> building by DBEntityId [hp]  -> mode -> spell [cast,resolve,recast] -> parameter -> spell -> parameter [duration?,dmg,combined dmg]
+         */
+
         const squad = squads.get(card.DBEntityId);
         logger.debug({squad});
 
@@ -38,8 +56,8 @@ for (const upgrades of toProcess) {
         const squadUnit = units.get(squad.SquadMembers[0].UnitId); // might be wrong for mixed-unit squads
         logger.debug({squadUnit});
 
-        const listedHealth = squadUnit.Health;
-        const listedDp20 = squadUnit.Archive.Damage;
+        const listedHealth = squadUnit.Health * squadSize;
+        const listedDp20 = squadUnit.Archive.Damage * squadSize;
         logger.debug({listedDp20, listedHealth});
 
         const squadMode = modes.get(squad.ModeIds[0]); // might be wrong mode
@@ -48,22 +66,32 @@ for (const upgrades of toProcess) {
         const modeSpell = spells.get(squadMode.ModeUnitSpells[0]); // might need to find the "main" spell
         logger.debug({modeSpell});
 
+        if (!modeSpell) {
+            logger.debug('non-ranged unit detected, aborting');
+            continue;
+        }
+
+        const attackRate = modeSpell.CastSteps + Math.max(modeSpell.ResolveSteps, modeSpell.RecastSteps); // TODO might be incomplete, AnimationTagId relevant?
+        logger.debug({attackRate});
+
         const spellName = spellDescriptions.get(toU0(modeSpell.Id)).Name; // U1+ do not have descriptions
         logger.debug({spellName});
 
-        const tryScrapeAtkCooldown = () => {
+        /*
+        const tryScrapeAttackRate = () => {
             try {
                 const spellTranslation = spellTranslations.get(modeSpell.Id);
                 logger.debug({spellTranslation});
                 const scrapedAtkCooldown = +spellTranslation.map(line => new RegExp(/every (\d+) seconds/i).exec(line.Text)).find(v => !!v)[1];
-                return scrapedAtkCooldown;
+                return scrapedAtkCooldown * 1000;
             } catch (err) {
                 logger.debug('Scraping error', err);
                 return null;
             }
         };
-        const scrapedAtkCooldown = tryScrapeAtkCooldown();
-        logger.debug({scrapedAtkCooldown});
+        const scrapedAttackRate = tryScrapeAttackRate();
+        logger.debug({scrapedAttackRate});
+        */
 
         const spellProjectile = projectiles.get(modeSpell.ParametersContainer.Parameters[0].Value);
         logger.debug({spellProjectile});
@@ -74,7 +102,7 @@ for (const upgrades of toProcess) {
 
         const getDmgRange = (): [number, number] => {
             const dmgAgainstFigures = projectileSpell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.DamageAgainstFigures);
-            if (projectileSpell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.DamageAgainstFigures)) {
+            if (dmgAgainstFigures) {
                 return [dmgAgainstFigures.Value, dmgAgainstFigures.Value];
             }
 
@@ -93,7 +121,6 @@ for (const upgrades of toProcess) {
 
         /**
          * Validations:
-         *  listed hp = real hp
          *  listed dp20 = real dp20
          *  listed atk cooldown = real attack cooldown
          *  upgrade text = real upgrade values
@@ -102,14 +129,12 @@ for (const upgrades of toProcess) {
 
         /**
          * TODO
-         * - get listed and real atk cooldowns
-         * - get real hp
          * - try processing more cards
          */
 
-        const realDp20 = squadSize * (minDmg + maxDmg) / 2 * 20 / scrapedAtkCooldown;
+        const realDp20 = squadSize * (minDmg + maxDmg) / 2 * 20 / attackRate * 1000;
         const realDp20Rounded = 5 * Math.round(realDp20 / 5);
-        const result = {name: cardName, upgrade: Math.round(upgrade / 1_000_000), listedDp20, listedHealth, scrapedAtkCooldown, minDmg, maxDmg, realDp20Rounded};
+        const result = {name: cardName, upgrade: Math.round(upgrade / 1_000_000), listedDp20, listedHealth, attackRate, minDmg, maxDmg, realDp20Rounded};
         logger.debug(result);
 
         if (listedDp20 !== realDp20Rounded) {

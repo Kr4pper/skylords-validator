@@ -1,3 +1,10 @@
+export enum CardType {
+    Unknown = 0,
+    Building = 1,
+    Squad = 2,
+    Spell = 3,
+}
+
 export interface Card {
     Version: number;
     Id: number;
