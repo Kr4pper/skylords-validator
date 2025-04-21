@@ -52,7 +52,26 @@ export enum SpellParameterId {
     DamageAgainstWalls = 137,
     Projectile = 278,
     FlameThrower = 371,
+    AbilityOnTarget = 374,
+    AbilityOnTarget2 = 375,
     GainOnTrueSourceFalseTarget = 383,
     GainOnTrueAreaUnderTarget = 384, // unsure
-    AbilityToGain = 386,  // used by some ranged units to deal dmg, also Ids 464..468
+    AbilityToGain = 386,
+    PoisonInitialDmgSpell = 456,
+    PoisonDmgSpell = 457,
+    AbilityToGain2 = 464,
+    AbilityToGain3 = 465,
+    AbilityToGain4 = 466,
+    AbilityToGain5 = 467,
+    AbilityToGain6 = 468,
+    SuicideBomb = 557,
 }
+
+export const SPELL_GAINED_ABILITY_IDS = [
+    SpellParameterId.AbilityToGain,
+    SpellParameterId.AbilityToGain2,
+    SpellParameterId.AbilityToGain3,
+    SpellParameterId.AbilityToGain4,
+    SpellParameterId.AbilityToGain5,
+    SpellParameterId.AbilityToGain6,
+];

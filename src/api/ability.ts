@@ -26,6 +26,8 @@ export interface Ability {
 
 export enum AbilityParameterIds {
     GenericCavalrySpeed = 3,
+    DelaySteps = 12,
+    Damage = 13,
     DamageOnSingleStructure2 = 349,
     Radius = 360,
     DamageOnSingleUnit = 362,

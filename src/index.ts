@@ -1,5 +1,5 @@
 import {existsSync} from 'fs';
-import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType, DiagnosticContainer, DiagnosticType, Diagnostic, CardIds, PROJECTILE_CHAIN_IDS} from './api';
+import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType, DiagnosticContainer, DiagnosticType, Diagnostic, CardIds, PROJECTILE_CHAIN_IDS, SPELL_GAINED_ABILITY_IDS} from './api';
 import {loadGameData, loadLanguageTable, logger} from './util';
 
 const dbPath = process.argv[3];
@@ -24,34 +24,57 @@ const toU0 = (id: number) => {
 };
 
 const toProcess = Object.values(playerCards);
-//const toProcess = [{U0: playerCards.PrimevalWatcher.U0}];
+//const toProcess = [{U0: playerCards.EvilEye.U0}];
 //const toProcess = [playerCards.GiantWyrm];
 
 const diagnostics: DiagnosticContainer[] = [];
 const okayList: {id: CardIds, name: string;}[] = [];
+const BLACKLIST = [
+    playerCards.CorsairANature.U0,
+    playerCards.CorsairAShadow.U0,
+    playerCards.LostSpiritShipAFire.U0,
+    playerCards.LostSpiritShipANature.U0,
+    playerCards.Molt.U0,
+    playerCards.Hellhound.U0,
+    playerCards.Devourer.U0,
+];
 
 try {
     for (const upgrades of toProcess) {
+        if (BLACKLIST.includes(upgrades.U0 % 1_000_000)) {
+            logger.debug('blacklisted card detected');
+            diagnostics.push({card: {id: null, name: null}, diag: {type: DiagnosticType.UnsupportedEntity, entity: JSON.stringify(upgrades)}});
+            continue;
+        }
+
+        logger.debug(upgrades);
         const cardName = cardDescriptions.get(upgrades.U0).Name;
         logger.info('Processing', cardName);
 
-        for (const upgrade of Object.values(upgrades)) {
+        for (const cardId of Object.values(upgrades)) {
             let diagIssued = false;
 
-            const card = cards.get(upgrade);
+            const card = cards.get(cardId);
             logger.debug({card});
 
             if (card.Type === CardType.Spell) {
                 logger.debug('spell detected, aborting');
-                okayList.push({id: upgrade, name: cardName});
+                okayList.push({id: cardId, name: cardName});
                 continue;
             }
 
             if (card.Type === CardType.Building) {
                 logger.debug('building detected, aborting');
-                diagnostics.push({card: {id: upgrade, name: cardName}, diag: {type: DiagnosticType.UnsupportedEntity, entity: 'building'}});
+                diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UnsupportedEntity, entity: 'building'}});
                 continue;
             }
+
+            if (card.IsPromo && (cardId < 2_000_000 || cardId > 3_000_000)) {
+                logger.debug('promo card with upgrade!=2 detected, aborting');
+                okayList.push({id: cardId, name: cardName});
+                continue;
+            }
+
 
             /**
              * Squads
@@ -76,12 +99,12 @@ try {
 
             if (listedDp20 === 0) {
                 logger.debug('card is not an attacker');
-                okayList.push({id: upgrade, name: cardName});
+                okayList.push({id: cardId, name: cardName});
                 continue;
             }
 
             if (squad.ModeIds.length !== 1) {
-                diagnostics.push({card: {id: upgrade, name: cardName}, diag: {type: DiagnosticType.MultipleSquadModesFound, modeIds: squad.ModeIds}});
+                diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.MultipleSquadModesFound, modeIds: squad.ModeIds}});
                 continue;
             }
 
@@ -89,7 +112,7 @@ try {
             logger.debug({squadMode});
 
             if (squadMode.ModeUnitSpells.length !== 1) {
-                diagnostics.push({card: {id: upgrade, name: cardName}, diag: {type: DiagnosticType.MultipleModeSpellsFound, spellIds: squadMode.ModeUnitSpells}});
+                diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.MultipleModeSpellsFound, spellIds: squadMode.ModeUnitSpells}});
                 continue;
             }
 
@@ -98,7 +121,7 @@ try {
 
             if (!modeUnitSpell) {
                 logger.debug('non-ranged unit detected, aborting');
-                diagnostics.push({card: {id: upgrade, name: cardName}, diag: {type: DiagnosticType.UnsupportedEntity, entity: 'melee unit'}});
+                diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UnsupportedEntity, entity: 'melee unit'}});
                 continue;
             }
 
@@ -115,7 +138,7 @@ try {
                     const atkRateContainer = spellTranslation.map(line => new RegExp(/every (\d+) seconds/i).exec(line.Text)).find(v => !!v);
                     const scrapedAtkCooldown = +atkRateContainer[1];
 
-                    diagnostics.push({card: {id: upgrade, name: cardName}, diag: {type: DiagnosticType.HardCodedAttackRate, translationText: atkRateContainer[0]}});
+                    diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.HardCodedAttackRate, translationText: atkRateContainer[0]}});
                     diagIssued = true;
 
                     return scrapedAtkCooldown * 1000;
@@ -156,16 +179,37 @@ try {
                         return [dmgAgainstFigures.Value, dmgAgainstFigures.Value];
                     }
 
-                    const gainedAttackAbility = projectileSpell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.AbilityToGain);
-                    if (gainedAttackAbility) {
-                        const ability = abilities.get(gainedAttackAbility.Value);
-                        logger.debug('ability parameters', ability.ParametersContainer.Parameters);
-                        const minDmg = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.DamageOnSingleUnit).Value;
-                        const maxDmg = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.TotalCombinedDamage).Value;
-                        return [minDmg, maxDmg];
+                    const gainedAttackAbilities = projectileSpell.ParametersContainer.Parameters.filter(p => SPELL_GAINED_ABILITY_IDS.includes(p.Id) && p.Value);
+                    logger.debug({gainedAttackAbilities});
+
+                    for (let i = 0; i < gainedAttackAbilities.length; i++) {
+                        try {
+                            const ability = abilities.get(gainedAttackAbilities[i].Value);
+                            logger.debug('ability parameters', ability.ParametersContainer.Parameters);
+                            const minDmg = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.DamageOnSingleUnit).Value;
+                            const maxDmg = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.TotalCombinedDamage).Value;
+                            return [minDmg, maxDmg];
+                        } catch (err) {
+                            logger.debug('no match for gained attack', gainedAttackAbilities[i]);
+                        }
                     }
 
-                    throw new Error('unsupported dmg type');
+                    // try resolving poison initial dmg attack
+                    const poisonInitialContainer = projectileSpell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.PoisonInitialDmgSpell);
+                    if (poisonInitialContainer) {
+                        logger.debug('trying to find poison initial dmg spell');
+                        const spell = spells.get(poisonInitialContainer.Value);
+                        logger.debug({spell});
+                        logger.debug({C: spell.ParametersContainer.Parameters});
+
+                        const gainedAbility = spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.AbilityToGain);
+                        if (gainedAbility) {
+                            return getDmgRange(spell);
+                        }
+
+                        const dmg = spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.DamageAgainstFigures).Value;
+                        return [dmg, dmg];
+                    }
                 } catch (err) {
                     logger.debug('no projectile -> spell -> ability resolved', err);
                 }
@@ -209,6 +253,43 @@ try {
                     logger.debug('no dmg properties in spell found');
                 }
 
+                // try resolving suicide attack
+                try {
+                    logger.debug('trying to find suicide attack spell');
+                    const spell = spells.get(modeUnitSpell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.SuicideBomb).Value);
+                    const parameters = spell.ParametersContainer.Parameters;
+                    logger.debug({spell});
+                    logger.debug('spell parameters', parameters);
+
+                    return getDmgRange(spell);
+
+                } catch (err) {
+                    logger.debug('could not resolve suicide attack');
+                }
+
+                // try resolving shriek attack 
+                const poisonInitialContainer = modeUnitSpell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.PoisonInitialDmgSpell);
+                if (poisonInitialContainer) {
+                    logger.debug('trying to resolve shriek dmg spell');
+                    const spell = spells.get(poisonInitialContainer.Value);
+                    logger.debug({spell});
+                    logger.debug({C: spell.ParametersContainer.Parameters});
+
+                    return getDmgRange(spell);
+                }
+
+                // try resolving ability on target
+                const abilityOnTarget = modeUnitSpell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.AbilityOnTarget);
+                if (abilityOnTarget) {
+                    logger.debug('trying to resolve ability on target');
+                    const ability = abilities.get(abilityOnTarget.Value);
+                    logger.debug({ability});
+                    logger.debug({C: ability.ParametersContainer.Parameters});
+
+                    const dmg = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.Damage).Value;
+                    const delaySteps = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.DelaySteps).Value; // take this into account here?
+                    return [dmg, dmg];
+                }
 
                 throw new Error('could not resolve damage');
             };
@@ -233,16 +314,16 @@ try {
 
             const expectedDp20 = squadSize * (minDmg + maxDmg) / 2 * 20 / attackRate * 1000;
             const expectedDp20RoundedTo5 = Math.round(5 * Math.round(expectedDp20 / 5));
-            const result = {name: cardName, upgrade: Math.round(upgrade / 1_000_000), listedDp20, listedHealth, attackRate, minDmg, maxDmg, expectedDp20: expectedDp20RoundedTo5, squadSize};
+            const result = {name: cardName, upgrade: Math.round(cardId / 1_000_000), listedDp20, listedHealth, attackRate, minDmg, maxDmg, expectedDp20: expectedDp20RoundedTo5, squadSize};
             logger.debug(result);
 
             if (listedDp20 !== expectedDp20RoundedTo5) {
-                diagnostics.push({card: {id: upgrade, name: cardName}, diag: {type: DiagnosticType.Dp20Mismatch, listedDp20, expectedDp20: expectedDp20RoundedTo5}});
+                diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.Dp20Mismatch, listedDp20, expectedDp20: expectedDp20RoundedTo5}});
                 diagIssued = true;
             }
 
             if (!diagIssued) {
-                okayList.push({id: upgrade, name: cardName});
+                okayList.push({id: cardId, name: cardName});
             }
         }
     }
