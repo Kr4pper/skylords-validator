@@ -18,7 +18,7 @@ export type Diagnostic = (
 
 export type DiagnosticContainer = {card: {id: CardIds; name: string;}, diag: Diagnostic;};
 
-type Dp20Mismatch = {listedDp20: number, expectedDp20: number;};
+type Dp20Mismatch = {listedDp20: number, expectedDp20: number; attackRate: number;};
 
 type HardCodedAttackRate = {translationText: string;};
 

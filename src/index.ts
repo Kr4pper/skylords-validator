@@ -25,7 +25,7 @@ const toU0 = (id: number) => {
 
 //const toProcess = Object.values(playerCards);
 //const toProcess = [{U0: playerCards.TimelessOne.U0}];
-const toProcess = [playerCards.BanditSorceressAFrost];
+const toProcess = [playerCards.Shaman];
 
 const diagnostics: DiagnosticContainer[] = [];
 const okayList: {id: CardIds, name: string;}[] = [];
@@ -34,6 +34,7 @@ const BLACKLIST = [
     playerCards.CorsairAShadow.U0,
     playerCards.LostSpiritShipAFire.U0,
     playerCards.LostSpiritShipANature.U0,
+    playerCards.Spitfire.U0,
     playerCards.Molt.U0,
     playerCards.Hellhound.U0,
     playerCards.Devourer.U0,
@@ -103,7 +104,12 @@ try {
                 continue;
             }
 
-            if (squad.ModeIds.length !== 1) {
+            if (squad.ModeIds.length === 0) { // includes melee units
+                diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UnsupportedEntity, entity: 'melee'}});
+                continue;
+            }
+
+            if (squad.ModeIds.length > 1) {
                 diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.MultipleSquadModesFound, modeIds: squad.ModeIds}});
                 continue;
             }
@@ -288,7 +294,8 @@ try {
 
                     const dmg = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.Damage).Value;
                     const delaySteps = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.DelaySteps).Value; // take this into account here?
-                    return [dmg, dmg];
+                    const adjusted = dmg * attackRate / delaySteps;
+                    return [adjusted, adjusted];
                 }
 
                 throw new Error('could not resolve damage');
@@ -318,7 +325,7 @@ try {
             logger.debug(result);
 
             if (listedDp20 !== expectedDp20RoundedTo5) {
-                diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.Dp20Mismatch, listedDp20, expectedDp20: expectedDp20RoundedTo5}});
+                diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.Dp20Mismatch, listedDp20, expectedDp20: expectedDp20RoundedTo5, attackRate}});
                 diagIssued = true;
             }
 

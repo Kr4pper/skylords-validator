@@ -43,18 +43,26 @@ WARN  Skyelf Templar (id:524) -> Dp20Mismatch {"listedDp20":1470,"expectedDp20":
 WARN  Skyelf Templar (id:1000524) -> Dp20Mismatch {"listedDp20":1470,"expectedDp20":1345}
 WARN  Skyelf Templar (id:2000524) -> Dp20Mismatch {"listedDp20":1470,"expectedDp20":1345}
 WARN  Skyelf Templar (id:3000524) -> Dp20Mismatch {"listedDp20":1470,"expectedDp20":1345}
+listed attack rate 1600 confirmed in game, via game data attack rate 1750
+
 WARN  Skyelf Commander (id:526) -> Dp20Mismatch {"listedDp20":1660,"expectedDp20":1515}
 WARN  Skyelf Commander (id:1000526) -> Dp20Mismatch {"listedDp20":1660,"expectedDp20":1515}
 WARN  Skyelf Commander (id:2000526) -> Dp20Mismatch {"listedDp20":1660,"expectedDp20":1515}
 WARN  Skyelf Commander (id:3000526) -> Dp20Mismatch {"listedDp20":1660,"expectedDp20":1515}
+listed attack rate 1600 confirmed in game, via game data attack rate 1750
+
 WARN  Skyelf Sage (id:527) -> Dp20Mismatch {"listedDp20":1300,"expectedDp20":1190}
 WARN  Skyelf Sage (id:1000527) -> Dp20Mismatch {"listedDp20":1375,"expectedDp20":1255}
 WARN  Skyelf Sage (id:2000527) -> Dp20Mismatch {"listedDp20":1530,"expectedDp20":1400}
 WARN  Skyelf Sage (id:3000527) -> Dp20Mismatch {"listedDp20":1645,"expectedDp20":1505}
+listed attack rate 1600 confirmed in game, via game data attack rate 1750
+
 WARN  Primeval Watcher (id:550) -> Dp20Mismatch {"listedDp20":7220,"expectedDp20":10045}
 WARN  Primeval Watcher (id:1000550) -> Dp20Mismatch {"listedDp20":7220,"expectedDp20":10045}
 WARN  Primeval Watcher (id:2000550) -> Dp20Mismatch {"listedDp20":7220,"expectedDp20":10045}
 WARN  Primeval Watcher (id:3000550) -> Dp20Mismatch {"listedDp20":7220,"expectedDp20":10045}
+dp20 with all chains hitting ~10k, not sure how 7220 was determined
+
 WARN  Cultist Master (id:562) -> Dp20Mismatch {"listedDp20":615,"expectedDp20":600}
 WARN  Cultist Master (id:3000562) -> Dp20Mismatch {"listedDp20":770,"expectedDp20":775}
 WARN  War Eagle (id:661) -> Dp20Mismatch {"listedDp20":1400,"expectedDp20":1380}
@@ -69,6 +77,8 @@ WARN  Fallen Skyelf (id:664) -> Dp20Mismatch {"listedDp20":1560,"expectedDp20":1
 WARN  Fallen Skyelf (id:1000664) -> Dp20Mismatch {"listedDp20":1560,"expectedDp20":1430}
 WARN  Fallen Skyelf (id:2000664) -> Dp20Mismatch {"listedDp20":1560,"expectedDp20":1430}
 WARN  Fallen Skyelf (id:3000664) -> Dp20Mismatch {"listedDp20":1560,"expectedDp20":1430}
+listed attack rate 1600 confirmed in game, via game data attack rate 1750
+
 WARN  Fire Dragon (id:1000677) -> Dp20Mismatch {"listedDp20":2270,"expectedDp20":2275}
 WARN  Fire Dragon (id:2000677) -> Dp20Mismatch {"listedDp20":2500,"expectedDp20":2505}
 WARN  Fire Dragon (id:3000677) -> Dp20Mismatch {"listedDp20":2750,"expectedDp20":2760}
@@ -80,17 +90,19 @@ WARN  Giant Wyrm (id:708) -> Dp20Mismatch {"listedDp20":4000,"expectedDp20":4300
 WARN  Giant Wyrm (id:1000708) -> Dp20Mismatch {"listedDp20":4230,"expectedDp20":4550}
 WARN  Giant Wyrm (id:2000708) -> Dp20Mismatch {"listedDp20":4650,"expectedDp20":5015}
 WARN  Giant Wyrm (id:3000708) -> Dp20Mismatch {"listedDp20":5115,"expectedDp20":5515}
+listed atk rate 3000, game data attack rate ~2800 confirmed in game
+
 WARN  Fire Worm (id:709) -> Dp20Mismatch {"listedDp20":4000,"expectedDp20":4800}
 WARN  Fire Worm (id:1000709) -> Dp20Mismatch {"listedDp20":4000,"expectedDp20":4800}
 WARN  Fire Worm (id:2000709) -> Dp20Mismatch {"listedDp20":4000,"expectedDp20":4800}
 WARN  Fire Worm (id:3000709) -> Dp20Mismatch {"listedDp20":4000,"expectedDp20":4800}
-WARN  Spitfire (id:778) -> Dp20Mismatch {"listedDp20":5880,"expectedDp20":2090}
-WARN  Spitfire (id:1000778) -> Dp20Mismatch {"listedDp20":5980,"expectedDp20":2200}
-WARN  Spitfire (id:2000778) -> Dp20Mismatch {"listedDp20":6130,"expectedDp20":2370}
-WARN  Spitfire (id:3000778) -> Dp20Mismatch {"listedDp20":6330,"expectedDp20":2590}
+listed atk rate 3000, game data 2500, in game ~3150
+
 WARN  Firedancer (Promo) (id:2001021) -> Dp20Mismatch {"listedDp20":740,"expectedDp20":730}
 WARN  Swamp Drake (Promo) (id:2001031) -> Dp20Mismatch {"listedDp20":1770,"expectedDp20":1775}
 WARN  Fallen Skyelf (Promo) (id:2001034) -> Dp20Mismatch {"listedDp20":1560,"expectedDp20":1430}
+listed attack rate 1600 confirmed in game, via game data attack rate 1750
+
 WARN  Stormsinger (Fire affinity) (id:1119) -> Dp20Mismatch {"listedDp20":555,"expectedDp20":560}
 WARN  Stormsinger (Fire affinity) (id:1001119) -> Dp20Mismatch {"listedDp20":555,"expectedDp20":560}
 WARN  Stormsinger (Fire affinity) (id:2001119) -> Dp20Mismatch {"listedDp20":555,"expectedDp20":560}
@@ -99,6 +111,8 @@ WARN  Core Dredge (Frost affinity) (id:1120) -> Dp20Mismatch {"listedDp20":2880,
 WARN  Core Dredge (Frost affinity) (id:1001120) -> Dp20Mismatch {"listedDp20":2930,"expectedDp20":2815}
 WARN  Core Dredge (Frost affinity) (id:2001120) -> Dp20Mismatch {"listedDp20":3050,"expectedDp20":2930}
 WARN  Core Dredge (Frost affinity) (id:3001120) -> Dp20Mismatch {"listedDp20":3325,"expectedDp20":3195}
+listed atk rate 2000, game data 2083
+
 WARN  Gladiatrix (Nature affinity) (id:1122) -> Dp20Mismatch {"listedDp20":780,"expectedDp20":785}
 WARN  Gladiatrix (Nature affinity) (id:1001122) -> Dp20Mismatch {"listedDp20":800,"expectedDp20":810}
 WARN  Gladiatrix (Nature affinity) (id:2001122) -> Dp20Mismatch {"listedDp20":830,"expectedDp20":840}
@@ -191,6 +205,8 @@ WARN  QueekQueek (Player Card) (id:1531) -> Dp20Mismatch {"listedDp20":640,"expe
 WARN  QueekQueek (Player Card) (id:1001531) -> Dp20Mismatch {"listedDp20":640,"expectedDp20":695}
 WARN  QueekQueek (Player Card) (id:2001531) -> Dp20Mismatch {"listedDp20":640,"expectedDp20":695}
 WARN  QueekQueek (Player Card) (id:3001531) -> Dp20Mismatch {"listedDp20":640,"expectedDp20":695}
+game data atk rate 2300, dp20 based on 2500, in game around 2500-2600
+
 WARN  Lost Horror (Nature affinity) (id:1543) -> Dp20Mismatch {"listedDp20":1870,"expectedDp20":1875}
 WARN  Lost Horror (Nature affinity) (id:1001543) -> Dp20Mismatch {"listedDp20":1870,"expectedDp20":1875}
 WARN  Lost Horror (Nature affinity) (id:2001543) -> Dp20Mismatch {"listedDp20":1870,"expectedDp20":1875}
@@ -211,7 +227,7 @@ WARN  Bandit Sorceress (Frost affinity) (id:1616) -> Dp20Mismatch {"listedDp20":
 WARN  Bandit Sorceress (Frost affinity) (id:1001616) -> Dp20Mismatch {"listedDp20":600,"expectedDp20":480}
 WARN  Bandit Sorceress (Frost affinity) (id:2001616) -> Dp20Mismatch {"listedDp20":600,"expectedDp20":480}
 WARN  Bandit Sorceress (Frost affinity) (id:3001616) -> Dp20Mismatch {"listedDp20":600,"expectedDp20":480}
-listed dp20 based on atk rate of 2000 but listed atk rate is 3000 and based on code its 2500
+listed dp20 based on atk rate of 2000 but listed atk rate is 3000 and based on code its 2500, in game also around 2500
 
 WARN  Twilight Hag (Nature affinity) (id:1619) -> Dp20Mismatch {"listedDp20":1030,"expectedDp20":1035}
 WARN  Twilight Hag (Nature affinity) (id:1001619) -> Dp20Mismatch {"listedDp20":1030,"expectedDp20":1035}
@@ -221,6 +237,8 @@ WARN  Bandit Sorceress (Fire affinity) (id:1620) -> Dp20Mismatch {"listedDp20":5
 WARN  Bandit Sorceress (Fire affinity) (id:1001620) -> Dp20Mismatch {"listedDp20":600,"expectedDp20":480}
 WARN  Bandit Sorceress (Fire affinity) (id:2001620) -> Dp20Mismatch {"listedDp20":600,"expectedDp20":480}
 WARN  Bandit Sorceress (Fire affinity) (id:3001620) -> Dp20Mismatch {"listedDp20":600,"expectedDp20":480}
+see frost affinity
+
 WARN  Twilight Hag (Fire affinity) (id:1622) -> Dp20Mismatch {"listedDp20":1030,"expectedDp20":1035}
 WARN  Twilight Hag (Fire affinity) (id:1001622) -> Dp20Mismatch {"listedDp20":1030,"expectedDp20":1035}
 WARN  Twilight Hag (Fire affinity) (id:2001622) -> Dp20Mismatch {"listedDp20":1030,"expectedDp20":1035}
@@ -238,14 +256,20 @@ WARN  Evil Eye (id:1684) -> Dp20Mismatch {"listedDp20":3500,"expectedDp20":1750}
 WARN  Evil Eye (id:1001684) -> Dp20Mismatch {"listedDp20":3700,"expectedDp20":1850}
 WARN  Evil Eye (id:2001684) -> Dp20Mismatch {"listedDp20":4000,"expectedDp20":2000}
 WARN  Evil Eye (id:3001684) -> Dp20Mismatch {"listedDp20":4000,"expectedDp20":2000}
+listed dp20 correct, expectedDp20 too low because it assumes resolvesteps=1000 from mode spell but beam dot has delay=500
+
 WARN  Lost Manabeast (id:1693) -> Dp20Mismatch {"listedDp20":1920,"expectedDp20":2060}
 WARN  Lost Manabeast (id:1001693) -> Dp20Mismatch {"listedDp20":1920,"expectedDp20":2060}
 WARN  Lost Manabeast (id:2001693) -> Dp20Mismatch {"listedDp20":1920,"expectedDp20":2060}
 WARN  Lost Manabeast (id:3001693) -> Dp20Mismatch {"listedDp20":1920,"expectedDp20":2060}
+listed atk rate 3000, game data 2800
+
 WARN  Bedrock (Frost affinity) (id:1695) -> Dp20Mismatch {"listedDp20":4780,"expectedDp20":4525}
 WARN  Bedrock (Frost affinity) (id:1001695) -> Dp20Mismatch {"listedDp20":4940,"expectedDp20":4685}
 WARN  Bedrock (Frost affinity) (id:2001695) -> Dp20Mismatch {"listedDp20":4940,"expectedDp20":4685}
 WARN  Bedrock (Frost affinity) (id:3001695) -> Dp20Mismatch {"listedDp20":5280,"expectedDp20":5000}
+listed atk rate 3000, game data 3167, in game ~3200
+
 WARN  Bedrock (Shadow affinity) (id:1696) -> Dp20Mismatch {"listedDp20":4780,"expectedDp20":4525}
 WARN  Bedrock (Shadow affinity) (id:1001696) -> Dp20Mismatch {"listedDp20":4940,"expectedDp20":4685}
 WARN  Bedrock (Shadow affinity) (id:2001696) -> Dp20Mismatch {"listedDp20":4940,"expectedDp20":4685}
