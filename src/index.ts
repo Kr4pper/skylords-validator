@@ -1,5 +1,5 @@
 import {existsSync} from 'fs';
-import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType} from './api';
+import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType, DiagnosticContainer, DiagnosticType} from './api';
 import {loadGameData, loadLanguageTable, logger} from './util';
 
 const dbPath = process.argv[3];
@@ -24,7 +24,10 @@ const toU0 = (id: number) => {
 };
 
 //const toProcess = Object.values(playerCards);
-const toProcess = [{U0: playerCards.CommandosAShadow.U0}];
+//const toProcess = [{U0: playerCards.GiantWyrm.U0}];
+const toProcess = [playerCards.GiantWyrm];
+
+const diagnostics: DiagnosticContainer[] = [];
 
 for (const upgrades of toProcess) {
     const cardName = cardDescriptions.get(upgrades.U0).Name;
@@ -77,12 +80,15 @@ for (const upgrades of toProcess) {
         const spellName = spellDescriptions.get(toU0(modeSpell.Id)).Name; // U1+ do not have descriptions
         logger.debug({spellName});
 
-        /*
         const tryScrapeAttackRate = () => {
             try {
                 const spellTranslation = spellTranslations.get(modeSpell.Id);
                 logger.debug({spellTranslation});
-                const scrapedAtkCooldown = +spellTranslation.map(line => new RegExp(/every (\d+) seconds/i).exec(line.Text)).find(v => !!v)[1];
+                const atkRateContainer = spellTranslation.map(line => new RegExp(/every (\d+) seconds/i).exec(line.Text)).find(v => !!v);
+                const scrapedAtkCooldown = +atkRateContainer[1];
+
+                diagnostics.push({card: {id: upgrade, name: cardName}, diag: {type: DiagnosticType.HardCodedAttackRate, translationText: atkRateContainer[0]}});
+
                 return scrapedAtkCooldown * 1000;
             } catch (err) {
                 logger.debug('Scraping error', err);
@@ -91,7 +97,6 @@ for (const upgrades of toProcess) {
         };
         const scrapedAttackRate = tryScrapeAttackRate();
         logger.debug({scrapedAttackRate});
-        */
 
         const spellProjectile = projectiles.get(modeSpell.ParametersContainer.Parameters[0].Value);
         logger.debug({spellProjectile});
@@ -121,7 +126,8 @@ for (const upgrades of toProcess) {
 
         /**
          * Validations:
-         *  listed dp20 = real dp20
+         *  x listed dp20 = real dp20
+         *  x hard coded atk rate
          *  listed atk cooldown = real attack cooldown
          *  upgrade text = real upgrade values
          *  min dmg on unit = min dmg on structure (maybe?)
@@ -132,14 +138,19 @@ for (const upgrades of toProcess) {
          * - try processing more cards
          */
 
-        const realDp20 = squadSize * (minDmg + maxDmg) / 2 * 20 / attackRate * 1000;
-        const realDp20Rounded = 5 * Math.round(realDp20 / 5);
-        const result = {name: cardName, upgrade: Math.round(upgrade / 1_000_000), listedDp20, listedHealth, attackRate, minDmg, maxDmg, realDp20Rounded};
+        const expectedDp20Raw = squadSize * (minDmg + maxDmg) / 2 * 20 / attackRate * 1000;
+        const expectedDp20 = 5 * Math.round(expectedDp20Raw / 5);
+        const result = {name: cardName, upgrade: Math.round(upgrade / 1_000_000), listedDp20, listedHealth, attackRate, minDmg, maxDmg, expectedDp20};
         logger.debug(result);
 
-        if (listedDp20 !== realDp20Rounded) {
-            logger.warn(`Dp20 mismatch, got ${listedDp20} but expected ${realDp20Rounded}`);
+        if (listedDp20 !== expectedDp20) {
+            logger.warn(`Dp20 mismatch, got ${listedDp20} but expected ${expectedDp20}`);
+            diagnostics.push({card: {id: upgrade, name: cardName}, diag: {type: DiagnosticType.Dp20Mismatch, listedDp20, expectedDp20: expectedDp20}});
             logger.warn(result);
         }
     }
 }
+
+const prettifyDiagnostic = (diagnostic: DiagnosticContainer) => `${diagnostic.card.name} (id:${diagnostic.card.id}) -> ${JSON.stringify(diagnostic.diag)}`;
+
+diagnostics.forEach(d => logger.warn(prettifyDiagnostic(d)));
