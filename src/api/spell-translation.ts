@@ -20,6 +20,8 @@ export enum SpellLocaType {
     MaxDmg = 7,
     AtkCooldown = 8,
     Radius = 14,
+    DelaySeconds = 35,
     UpgradeAddMinDmg = 99,
     UpgradeAddMaxDmg = 100,
+    PowerCostModifier = 121, // ?
 }

@@ -1,6 +1,7 @@
 import {existsSync} from 'fs';
-import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType, DiagnosticContainer, DiagnosticType, Diagnostic, CardIds, PROJECTILE_CHAIN_IDS, SPELL_GAIN_ABILITY_IDS, Building, SPELL_DMG_ABILITY_REF_IDS, SpellLoca, LocaTableType} from './api';
+import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType, DiagnosticContainer, DiagnosticType, Diagnostic, CardIds, PROJECTILE_CHAIN_IDS, SPELL_GAIN_ABILITY_IDS, Building, SPELL_DMG_ABILITY_REF_IDS, SpellLoca, LocaTableType, ModeLoca, ModeLocaType} from './api';
 import {loadGameData, loadLanguageTable, loadLocaTable, logger} from './util';
+import {CardLocaType} from './api/card-translation';
 
 const dbPath = process.argv[3];
 if (!existsSync(dbPath)) {
@@ -14,6 +15,7 @@ const squads = loadGameData<Squad>(dbPath, GameDataTableType.Squad);
 const buildings = loadGameData<Building>(dbPath, GameDataTableType.Building);
 const units = loadGameData<Unit>(dbPath, GameDataTableType.Unit);
 const modes = loadGameData<Mode>(dbPath, GameDataTableType.Mode);
+const modeLoca = loadLocaTable<ModeLoca>(dbPath, LocaTableType.Mode);
 const spells = loadGameData<Spell>(dbPath, GameDataTableType.Spell);
 const spellDescriptions = loadGameData<SpellDescription>(dbPath, GameDataTableType.SpellDescription);
 const spellTranslations = loadLanguageTable<SpellTranslation>(dbPath, LanguageTableType.Spell);
@@ -26,9 +28,9 @@ const toU0 = (id: number) => {
     return id;
 };
 
-//const toProcess = Object.values(playerCards);
+const toProcess = Object.values(playerCards);
 //const toProcess = [{U0: playerCards.RocketTower.U0}];
-const toProcess = [playerCards.GiantWyrm];
+//const toProcess = [playerCards.BanditLauncherAShadow];
 
 const diagnostics: DiagnosticContainer[] = [];
 const okayList: {id: CardIds, name: string;}[] = [];
@@ -47,6 +49,8 @@ const BLACKLIST = [
 
 try {
     for (const upgrades of toProcess) {
+        let previousUpgrade = null;
+
         if (BLACKLIST.includes(upgrades.U0 % 1_000_000)) {
             logger.debug('blacklisted card detected');
             continue;
@@ -151,10 +155,9 @@ try {
                 }
             };
 
-            const spellIds = getRelevantSpellIds(card, mode);
+            const spellIds = getRelevantSpellIds(card, mode).filter(id => (spells.get(id).Flags & 8) === 0); // exclude bit 3 = manual cast
             logger.debug({spellIds});
 
-            // try to find the "main" spell instead
             if (spellIds.length > 1) {
                 diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.MultipleModeSpellsFound, spellIds}});
                 continue;
@@ -343,10 +346,8 @@ try {
 
             /**
              *  card id -> card translation for text templates
-             *  spell (or ability/proj?) -> spell loca for values
-             *  compare with gathered data about lower upgrade tier
-             * 
-                {
+             *  spell delta -> spell loca for values
+             *  {
                     Id: 3001254,
                     Values: [
                         { Id: 6, Text: '615', Unknown1: false },
@@ -356,12 +357,75 @@ try {
                         { Id: 100, Text: '85', Unknown1: true }
                     ]
                 }
+             *  ability delta 1002038 -> used to represent hp value change
+                ability delta 1002039 -> used to represent dmg value change
+                index mode loca (9201) with ability id for value
+
+             *  compare with gathered data about lower upgrade tier
              */
+
+            const getUpgradeData = (cardId: CardIds): {health?: number, dp20?: number;} => {
+                const translations = cardTranslations.get(cardId);
+                logger.debug({translations});
+
+                const upgradeTemplate = translations.find(t => t.LocaType === CardLocaType.UpgradeTemplate);
+                if (!upgradeTemplate) {
+                    return {};
+                }
+
+                const EXTRACT_HP_UPGRADE = new RegExp('<FORMAT TAG="card_ability_name_style"><VAR NAME="ability_name" ID="\\d002038"></FORMAT TAG> <FORMAT TAG="delta_card_text_style"><VAR NAME="mode_delta_bonus" ID="(\\d+)"></FORMAT TAG>', 'i');
+                const hpMatch = EXTRACT_HP_UPGRADE.exec(upgradeTemplate.Text);
+                logger.debug({hpMatch});
+                if (hpMatch) {
+                    const loca = modeLoca.get(+hpMatch[1]);
+                    logger.debug({L: loca.Values});
+                    const delta = loca.Values.find(l => [ModeLocaType.HealthModifier, ModeLocaType.HealthModifier2].includes(l.Id)).Text;
+                    return {health: +delta};
+                }
+
+
+                const EXTRACT_DP20_UPGRADE = new RegExp('<FORMAT TAG="card_ability_name_style"><VAR NAME="ability_name" ID="\\d002039"></FORMAT TAG> <FORMAT TAG="delta_card_text_style"><VAR NAME="mode_delta_bonus" ID="(\\d+)"></FORMAT TAG>', 'i');
+                const dp20Match = EXTRACT_DP20_UPGRADE.exec(upgradeTemplate.Text);
+                logger.debug({dp20Match});
+                if (dp20Match) {
+                    const loca = modeLoca.get(+dp20Match[1]);
+                    if (loca) { // make sure typos in mode delta ID dont cause crash 
+                        logger.debug({L: loca.Values});
+                        const delta = loca.Values.find(l => [ModeLocaType.Dp20Modifier, ModeLocaType.Dp20Modifier2].includes(l.Id)).Text;
+                        return {dp20: +delta};
+                    }
+                }
+            };
+
+            const upgradeData = getUpgradeData(cardId);
+            logger.debug({upgradeData});
 
             const expectedDp20 = minDmg && maxDmg && attackRate ? squadSize * (minDmg + maxDmg) / 2 * 20 / attackRate * 1000 : undefined;
             const expectedDp20RoundedTo5 = expectedDp20 ? Math.round(5 * Math.round(expectedDp20 / 5)) : undefined;
-            const result = {cardName, cardId, upgrade: Math.round(cardId / 1_000_000), listedDp20, listedHealth, attackRate, minDmg, maxDmg, expectedDp20, expectedDp20RoundedTo5, squadSize};
+            const result = {cardName, cardId, upgrade: Math.round(cardId / 1_000_000), upgradeData, listedDp20, listedHealth, attackRate, minDmg, maxDmg, expectedDp20, expectedDp20RoundedTo5, squadSize};
             logger.debug(result);
+
+            if (previousUpgrade && upgradeData) {
+                if (upgradeData.dp20) {
+                    logger.debug('dp20 upgrade sanity check', upgradeData.dp20);
+                    const oldValue = previousUpgrade.listedDp20;
+                    logger.debug({oldValue, listedDp20, upgrade: upgradeData.dp20, squadSize});
+                    if (Math.round(oldValue + squadSize * upgradeData.dp20) !== listedDp20) {
+                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'dp20', oldValue, newValue: listedDp20, upgradeValue: upgradeData.dp20}});
+                        diagIssued = true;
+                    }
+                }
+
+                if (upgradeData.health) {
+                    logger.debug('health upgrade sanity check', upgradeData.health);
+                    const oldValue = previousUpgrade.listedHealth;
+                    logger.debug({oldValue, listedHealth, upgrade: upgradeData.health, squadSize});
+                    if (Math.round(oldValue + squadSize * upgradeData.health) !== listedHealth) {
+                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'health', oldValue, newValue: listedHealth, upgradeValue: upgradeData.health}});
+                        diagIssued = true;
+                    }
+                }
+            }
 
             if (expectedDp20RoundedTo5 && listedDp20 !== expectedDp20RoundedTo5) {
                 diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.Dp20Mismatch, listedDp20, expectedDp20: expectedDp20RoundedTo5, attackRate}});
@@ -371,6 +435,8 @@ try {
             if (!diagIssued) {
                 okayList.push({id: cardId, name: cardName});
             }
+
+            previousUpgrade = result;
         }
     }
 } catch (e) {
@@ -380,6 +446,14 @@ try {
 const withoutTypeEntry = ({type, ...content}: Diagnostic) => content;
 const prettifyDiagnostic = (diagnostic: DiagnosticContainer) => `${diagnostic.card.name} (id:${diagnostic.card.id}) -> ${diagnostic.diag.type} ${JSON.stringify(withoutTypeEntry(diagnostic.diag))}`;
 
+const countByType = (diagnostics: DiagnosticContainer[]) => {
+    const res: {[key: string]: number;} = {};
+    for (const diagnostic of diagnostics) {
+        res[diagnostic.diag.type] = (res[diagnostic.diag.type] ?? 0) + 1;
+    }
+    return res;
+};
+
 diagnostics.filter(d => d.diag.type === DiagnosticType.MultipleSquadModesFound).forEach(d => logger.warn(prettifyDiagnostic(d)));
 //diagnostics.forEach(d => logger.warn(prettifyDiagnostic(d)));
 
@@ -387,8 +461,4 @@ logger.warn(`${diagnostics.length} diagnostics`);
 //okayList.forEach(o => logger.debug(`OKAY ${o.name} (id:${o.id})`));
 logger.info(`${okayList.length} cards okay`);
 
-const wyrmLoca = spellLoca.get(1002946)
-logger.debug(wyrmLoca)
-
-const translation = cardTranslations.get(playerCards.BanditLauncherAShadow.U1)
-logger.debug(translation);
+logger.info(countByType(diagnostics));

@@ -6,6 +6,7 @@ export * from './card-ids';
 export * from './diagnostic';
 export * from './game-data-table-type';
 export * from './mode';
+export * from './mode-loca';
 export * from './projectile';
 export * from './squad';
 export * from './spell';

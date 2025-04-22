@@ -6,6 +6,7 @@ export enum DiagnosticType {
     UnsupportedEntity = 'UnsupportedEntity',
     MultipleSquadModesFound = 'MultipleSquadModesFound',
     MultipleModeSpellsFound = 'MultipleModeSpellsFound',
+    UpgradeMismatch = 'UpgradeMismatch',
 }
 
 export type Diagnostic = (
@@ -14,6 +15,7 @@ export type Diagnostic = (
     | {type: DiagnosticType.UnsupportedEntity;} & UnsupportedEntity
     | {type: DiagnosticType.MultipleSquadModesFound;} & MultipleSquadModesFound
     | {type: DiagnosticType.MultipleModeSpellsFound;} & MultipleModeSpellsFound
+    | {type: DiagnosticType.UpgradeMismatch;} & UpgradeMismatch
 );
 
 export type DiagnosticContainer = {card: {id: CardIds; name: string;}, diag: Diagnostic;};
@@ -27,3 +29,5 @@ type MultipleSquadModesFound = {modeIds: number[];};
 type MultipleModeSpellsFound = {spellIds: number[];};
 
 type UnsupportedEntity = {entity: string;};
+
+type UpgradeMismatch = {property: string; oldValue: number, newValue: number, upgradeValue: number;};

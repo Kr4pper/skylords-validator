@@ -1,7 +1,7 @@
 export interface Spell {
     "Version": number,
     "Id": number,
-    "SpellLine": number,
+    "SpellLine": SpellLine,
     "Flags": number,
     "ResTarget": number,
     "FlagsVis": false,
@@ -43,6 +43,11 @@ export interface Spell {
     },
     "Previews": number[],
     "Classes": number[],
+}
+
+enum SpellLine {
+    ProjectileUnitBuildingBarrier = 103,
+    SpellFork = 150,
 }
 
 export enum SpellParameterId {
