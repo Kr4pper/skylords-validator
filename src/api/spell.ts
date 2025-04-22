@@ -57,6 +57,7 @@ export enum SpellParameterId {
     GainOnTrueSourceFalseTarget = 383,
     GainOnTrueAreaUnderTarget = 384, // unsure
     AbilityToGain = 386,
+    DamageAgainstSquad = 440,
     PoisonInitialDmgSpell = 456,
     PoisonDmgSpell = 457,
     AbilityToGain2 = 464,

@@ -28,6 +28,8 @@ export enum AbilityParameterIds {
     GenericCavalrySpeed = 3,
     DelaySteps = 12,
     Damage = 13,
+    SpellToGive = 152,
+    SpellToCastAfterDelayOnUnit = 215,
     DamageOnSingleStructure2 = 349,
     Radius = 360,
     DamageOnSingleUnit = 362,
@@ -41,6 +43,7 @@ export enum AbilityParameterIds {
     DamagePerTarget = 424,
     TargetableEntityTypes = 425,
     DamageOnSingleStructure = 437,
+    StartProjectileSpell = 653,
     Interval = 755,
     TotalDamagePerInterval = 756,
 }
