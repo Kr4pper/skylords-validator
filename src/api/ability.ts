@@ -28,6 +28,7 @@ export enum AbilityParameterIds {
     GenericCavalrySpeed = 3,
     DelaySteps = 12,
     Damage = 13,
+    SpellToCast = 96,
     SpellToGive = 152,
     SpellToCastAfterDelayOnUnit = 215,
     DamageOnSingleStructure2 = 349,

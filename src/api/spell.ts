@@ -51,7 +51,7 @@ export enum SpellParameterId {
     DamageAgainstBuildings = 131,
     DamageAgainstWalls = 137,
     Projectile = 278,
-    FlameThrower = 371,
+    FlameThrowerAbility = 371,
     AbilityOnTarget = 374,
     AbilityOnTarget2 = 375,
     GainOnTrueSourceFalseTarget = 383,
@@ -65,10 +65,10 @@ export enum SpellParameterId {
     AbilityToGain4 = 466,
     AbilityToGain5 = 467,
     AbilityToGain6 = 468,
-    SuicideBomb = 557,
+    SuicideBombSpell = 557,
 }
 
-export const SPELL_GAINED_ABILITY_IDS = [
+export const SPELL_GAIN_ABILITY_IDS = [
     SpellParameterId.AbilityToGain,
     SpellParameterId.AbilityToGain2,
     SpellParameterId.AbilityToGain3,
@@ -76,3 +76,10 @@ export const SPELL_GAINED_ABILITY_IDS = [
     SpellParameterId.AbilityToGain5,
     SpellParameterId.AbilityToGain6,
 ];
+
+export const SPELL_DMG_ABILITY_REF_IDS = [
+    ...SPELL_GAIN_ABILITY_IDS,
+    SpellParameterId.FlameThrowerAbility,
+    SpellParameterId.AbilityOnTarget,
+    SpellParameterId.AbilityOnTarget2,
+]

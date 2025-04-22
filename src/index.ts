@@ -1,5 +1,5 @@
 import {existsSync} from 'fs';
-import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType, DiagnosticContainer, DiagnosticType, Diagnostic, CardIds, PROJECTILE_CHAIN_IDS, SPELL_GAINED_ABILITY_IDS, Building} from './api';
+import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType, DiagnosticContainer, DiagnosticType, Diagnostic, CardIds, PROJECTILE_CHAIN_IDS, SPELL_GAIN_ABILITY_IDS, Building, SPELL_DMG_ABILITY_REF_IDS} from './api';
 import {loadGameData, loadLanguageTable, logger} from './util';
 
 const dbPath = process.argv[3];
@@ -26,7 +26,7 @@ const toU0 = (id: number) => {
 
 const toProcess = Object.values(playerCards);
 //const toProcess = [{U0: playerCards.RocketTower.U0}];
-//const toProcess = [playerCards.RocketTower];
+//const toProcess = [playerCards.GemeyeAShadow];
 
 const diagnostics: DiagnosticContainer[] = [];
 const okayList: {id: CardIds, name: string;}[] = [];
@@ -191,175 +191,141 @@ try {
             const scrapedAttackRate = tryScrapeAttackRate();
             logger.debug({scrapedAttackRate});
 
-            const getDmgRange = (spell: Spell): [number, number] => {
-                // try going via projectile -> spell -> ability
-                try {
-                    logger.debug('trying to find projectile');
-                    const spellProjectile = projectiles.get(spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.Projectile).Value);
-                    logger.debug({spellProjectile});
-                    logger.debug({C: spellProjectile.ParametersContainer.Parameters});
+            const getProjectileDmg = (projectile: Projectile): [number, number] => {
+                logger.debug({projectile});
+                logger.debug({C: projectile.ParametersContainer.Parameters});
 
-                    if (spellProjectile.ParametersContainer.Parameters.some(({Id}) => PROJECTILE_CHAIN_IDS.includes(Id))) {
-                        logger.debug('chaining projectile detected');
-                        const chainSpellIds = spellProjectile.ParametersContainer.Parameters.filter(({Id}) => PROJECTILE_CHAIN_IDS.includes(Id)).reduce((ids, {Value}) => [...ids, Value], []);
-                        logger.debug({chainSpellIds});
+                if (projectile.ParametersContainer.Parameters.some(({Id}) => PROJECTILE_CHAIN_IDS.includes(Id))) {
+                    logger.debug('chaining projectile detected');
+                    const chainSpellIds = projectile.ParametersContainer.Parameters.filter(({Id}) => PROJECTILE_CHAIN_IDS.includes(Id)).reduce((ids, {Value}) => [...ids, Value], []);
+                    logger.debug({chainSpellIds});
 
-                        const chainDmg = chainSpellIds.map(id => spells.get(id).ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.DamageAgainstFigures).Value);
-                        logger.debug({chainDmg});
+                    const chainDmg = chainSpellIds.map(id => spells.get(id).ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.DamageAgainstFigures).Value);
+                    logger.debug({chainDmg});
 
-                        const total = chainDmg.reduce((sum, v) => sum + v, 0);
-                        return [total, total];
-                    }
+                    const total = chainDmg.reduce((sum, v) => sum + v, 0);
+                    return [total, total];
+                }
 
-                    const projectileSpell = spells.get(spellProjectile.TargetSpellId);
-                    logger.debug(1, {projectileSpell});
-                    logger.debug({C: projectileSpell.ParametersContainer.Parameters});
+                const projectileSpell = spells.get(projectile.TargetSpellId);
+                return getSpellDmg(projectileSpell);
+            };
 
-                    const dmgAgainstFiguresC = projectileSpell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.DamageAgainstFigures);
-                    const dmgAgainstFigures = (dmgAgainstFiguresC && dmgAgainstFiguresC.Value) || 0;
-                    const dmgAgainstSquadC = projectileSpell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.DamageAgainstSquad);
-                    const dmgAgainstSquad = (dmgAgainstSquadC && dmgAgainstSquadC.Value) || 0;
-                    const relevantDmg = Math.max(dmgAgainstFigures, dmgAgainstSquad);
-                    if (relevantDmg) {
-                        return [relevantDmg, relevantDmg];
-                    }
+            const getAbilityDmg = (ability: Ability): [number, number] => {
+                const parameters = ability.ParametersContainer.Parameters;
+                logger.debug('getAbilityDmg', ability.Id, parameters);
 
-                    const gainedAttackAbilities = projectileSpell.ParametersContainer.Parameters.filter(p => SPELL_GAINED_ABILITY_IDS.includes(p.Id) && p.Value);
-                    logger.debug({gainedAttackAbilities});
+                const minDmg = parameters.find(p => [AbilityParameterIds.DamageOnSingleUnit, AbilityParameterIds.DamagePerTarget].includes(p.Id))?.Value;
+                const maxDmg = parameters.find(p => [AbilityParameterIds.TotalCombinedDamage, AbilityParameterIds.TotalDamage].includes(p.Id))?.Value;
+                logger.debug({minDmg, maxDmg});
+                if (minDmg && maxDmg) {
+                    logger.debug('returning min, max');
+                    return [minDmg, maxDmg];
+                }
 
-                    for (let i = 0; i < gainedAttackAbilities.length; i++) {
-                        try {
-                            const ability = abilities.get(gainedAttackAbilities[i].Value);
-                            logger.debug('ability parameters', ability.Id, ability.ParametersContainer.Parameters);
-                            const minDmg = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.DamageOnSingleUnit).Value;
-                            const maxDmg = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.TotalCombinedDamage).Value;
-                            return [minDmg, maxDmg];
-                        } catch (err) {
-                            logger.debug('no match for gained attack', gainedAttackAbilities[i]);
-                        }
-                    }
+                const spellToGive = parameters.find(p => p.Id === AbilityParameterIds.SpellToGive)?.Value;
+                if (spellToGive) {
+                    logger.debug({spellToGive});
+                    return getSpellDmg(spells.get(spellToGive));
+                }
 
-                    // try resolving poison initial dmg attack
-                    const poisonInitialContainer = projectileSpell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.PoisonInitialDmgSpell);
-                    if (poisonInitialContainer) {
-                        logger.debug('trying to find poison initial dmg spell');
-                        const spell = spells.get(poisonInitialContainer.Value);
-                        logger.debug({spell});
-                        logger.debug({C: spell.ParametersContainer.Parameters});
+                const spellToCast = parameters.find(p => [AbilityParameterIds.SpellToCastAfterDelayOnUnit, AbilityParameterIds.SpellToCast].includes(p.Id) && p.Value)?.Value;
+                if (spellToCast) {
+                    logger.debug({spellToCast});
+                    return getSpellDmg(spells.get(spellToCast));
+                }
 
-                        const gainedAbility = spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.AbilityToGain);
-                        if (gainedAbility) {
-                            return getDmgRange(spell);
-                        }
+                const startProjectileSpell = parameters.find(p => p.Id === AbilityParameterIds.StartProjectileSpell)?.Value;
+                if (startProjectileSpell) {
+                    logger.debug({startProjectileSpell});
+                    return getSpellDmg(spells.get(startProjectileSpell));
+                }
 
-                        const dmg = spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.DamageAgainstFigures).Value;
-                        return [dmg, dmg];
-                    }
-                } catch (err) {
-                    logger.debug('no projectile -> spell -> ability resolved', err);
+                // flame thrower
+                const interval = parameters.find(p => p.Id === AbilityParameterIds.Interval)?.Value;
+                const dmgDamagePerInterval = parameters.find(p => p.Id === AbilityParameterIds.TotalDamagePerInterval)?.Value;
+                if (interval && dmgDamagePerInterval) {
+                    logger.debug({interval, dmgDamagePerInterval});
+                    return [dmgDamagePerInterval, dmgDamagePerInterval];
+                }
+
+                // beam dot
+                const dmg = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.Damage)?.Value;
+                const delaySteps = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.DelaySteps)?.Value; // take this into account here?
+                if (dmg && delaySteps) {
+                    logger.debug({dmg, delaySteps});
+                    return [dmg, dmg];
+                }
+            };
+
+            const getSpellDmg = (spell: Spell): [number, number] => {
+                logger.debug('getSpellDmg', spell.Id);
+                logger.debug({spell});
+                logger.debug({C: spell.ParametersContainer.Parameters});
+
+                // try going via projectile
+                const maybeProjectile = spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.Projectile)?.Value;
+                if (maybeProjectile) {
+                    return getProjectileDmg(projectiles.get(maybeProjectile));
                 }
 
                 // try going via ability
-                try {
-                    logger.debug('trying to find direct dmg ability');
-                    const dmgAbility = abilities.get(spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.AbilityToGain).Value);
-                    if (dmgAbility) {
-                        const parameters = dmgAbility.ParametersContainer.Parameters;
-                        logger.debug('ability parameters', dmgAbility.Id, parameters);
+                logger.debug('trying to find direct dmg ability');
 
-                        const spellToGive = parameters.find(p => p.Id === AbilityParameterIds.SpellToGive);
-                        if (spellToGive) {
-                            logger.debug({spellToGive});
-                            return getDmgRange(spells.get(spellToGive.Value));
-                        }
+                const maybeDmgAbilities = spell.ParametersContainer.Parameters.filter(p => SPELL_DMG_ABILITY_REF_IDS.includes(p.Id) && p.Value);
+                if (maybeDmgAbilities.length > 0) {
+                    logger.debug({maybeDmgAbilities});
 
-                        const spellToCast = parameters.find(p => p.Id === AbilityParameterIds.SpellToCastAfterDelayOnUnit);
-                        if (spellToCast) {
-                            logger.debug({spellToCast});
-                            return getDmgRange(spells.get(spellToCast.Value));
-                        }
+                    const resolved = maybeDmgAbilities.map(p => getAbilityDmg(abilities.get(p.Value)));
+                    logger.debug({resolved});
 
-                        const startProjectileSpell = parameters.find(p => p.Id === AbilityParameterIds.StartProjectileSpell);
-                        if (startProjectileSpell) {
-                            logger.debug({startProjectileSpell});
-                            return getDmgRange(spells.get(startProjectileSpell.Value));
-                        }
+                    const nonEmpty = resolved.filter(v => v);
 
-                        const minDmg = parameters.find(p => [AbilityParameterIds.DamageOnSingleUnit, AbilityParameterIds.DamagePerTarget].includes(p.Id)).Value;
-                        const maxDmg = parameters.find(p => [AbilityParameterIds.TotalCombinedDamage, AbilityParameterIds.TotalDamage].includes(p.Id)).Value;
-                        return [minDmg, maxDmg];
+                    // hack to return the beam dot part
+                    if (nonEmpty.length === 2 && cardId % 1_000_000 === playerCards.EvilEye.U0) {
+                        return nonEmpty[0];
                     }
-                } catch (err) {
-                    logger.debug('no dmg ability found');
-                }
 
-                // try going via flamethrower
-                try {
-                    logger.debug('trying to find flamethrower dmg ability');
-                    const flameThrowerAbility = abilities.get(spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.FlameThrower).Value);
-                    if (flameThrowerAbility) {
-                        const parameters = flameThrowerAbility.ParametersContainer.Parameters;
-                        logger.debug('ability parameters', parameters);
-                        const interval = parameters.find(p => p.Id === AbilityParameterIds.Interval).Value;
-                        const dmgDamagePerInterval = parameters.find(p => p.Id === AbilityParameterIds.TotalDamagePerInterval).Value;
-                        return [dmgDamagePerInterval, dmgDamagePerInterval]; // TODO integrate this better
+                    if (nonEmpty.length > 1) {
+                        throw new Error('more than one potential dmg ability');
                     }
-                } catch (err) {
-                    logger.debug('no dmg ability found');
+                    if (nonEmpty.length === 1) {
+                        return nonEmpty[0];
+                    }
                 }
 
-                // try going via dmg properties in spell
-                try {
-                    logger.debug('trying to find dmg properties in spell');
-                    const dmg = spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.DamageAgainstFigures).Value;
-                    return [dmg, dmg]; // TODO implement max dmg
-                } catch (err) {
-                    logger.debug('no dmg properties in spell found');
+                logger.debug('trying to find dmg properties in spell');
+                const dmg = spell.ParametersContainer.Parameters.find(p => [SpellParameterId.DamageAgainstFigures, SpellParameterId.DamageAgainstSquad].includes(p.Id) && p.Value)?.Value;
+                if (dmg) {
+                    return [dmg, dmg]; // TODO also look for max dmg here?
                 }
 
-                // try resolving suicide attack
-                try {
-                    logger.debug('trying to find suicide attack spell');
-                    const suicideSpell = spells.get(spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.SuicideBomb).Value);
-                    const parameters = suicideSpell.ParametersContainer.Parameters;
+                logger.debug('trying to find suicide attack spell');
+                const suicideSpellId = spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.SuicideBombSpell)?.Value;
+                if (suicideSpellId) {
+                    const suicideSpell = spells.get(suicideSpellId);
                     logger.debug({suicideSpell});
-                    logger.debug('suicideSpell parameters', parameters);
+                    logger.debug({C: suicideSpell.ParametersContainer.Parameters});
 
-                    return getDmgRange(suicideSpell);
-                } catch (err) {
-                    logger.debug('could not resolve suicide attack');
+                    return getSpellDmg(suicideSpell);
                 }
 
-                // try resolving shriek attack 
-                const poisonInitialContainer = spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.PoisonInitialDmgSpell);
-                if (poisonInitialContainer) {
-                    logger.debug('trying to resolve shriek dmg spell');
-                    const spell = spells.get(poisonInitialContainer.Value);
-                    logger.debug({spell});
+                logger.debug('trying to resolve initial dmg spell');
+                const poisonInitialDmgSpellId = spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.PoisonInitialDmgSpell)?.Value;
+                if (poisonInitialDmgSpellId) {
+                    const poisonInitialDmgSpell = spells.get(poisonInitialDmgSpellId);
+                    logger.debug({poisonInitialDmgSpell});
                     logger.debug({C: spell.ParametersContainer.Parameters});
 
-                    return getDmgRange(spell);
+                    return getSpellDmg(poisonInitialDmgSpell);
                 }
 
-                // try resolving ability on target
-                const abilityOnTarget = spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.AbilityOnTarget);
-                if (abilityOnTarget) {
-                    logger.debug('trying to resolve ability on target');
-                    const ability = abilities.get(abilityOnTarget.Value);
-                    logger.debug({ability});
-                    logger.debug({C: ability.ParametersContainer.Parameters});
-
-                    const dmg = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.Damage).Value;
-                    const delaySteps = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.DelaySteps).Value; // take this into account here?
-                    const adjusted = dmg * attackRate / delaySteps;
-                    return [adjusted, adjusted];
-                }
-
-                throw new Error('could not resolve damage');
+                throw new Error('could not resolve damage in ' + cardName + ' spell id is ' + spell.Id);
+                return [0, 0];
             };
 
             logger.debug({C: modeSpell.ParametersContainer.Parameters});
-            const [minDmg, maxDmg] = getDmgRange(modeSpell);
+            const [minDmg, maxDmg] = getSpellDmg(modeSpell);
             logger.debug({minDmg, maxDmg});
 
             /**
