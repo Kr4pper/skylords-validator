@@ -20,7 +20,7 @@ export type DiagnosticContainer = {card: {id: CardIds; name: string;}, diag: Dia
 
 type Dp20Mismatch = {listedDp20: number, expectedDp20: number; attackRate: number;};
 
-type HardCodedAttackRate = {translationText: string;};
+type HardCodedAttackRate = {scrapedAttackRate: number; attackRate: number;};
 
 type MultipleSquadModesFound = {modeIds: number[];};
 

@@ -1,0 +1,24 @@
+War Eagle
+listed 3000
+game files 3042
+observed in game ~2900
+
+Mana Wing
+listed 3000
+game files 3042
+observed in game ~3000
+
+Giant Wyrm
+listed 3000
+game files 2792
+observed in game ~2800
+
+Grim Bahir (F)
+listed 3000
+game files 2792
+observed in game ~2700
+
+Grim Bahir (N)
+listed 3000
+game files 2792
+observed in game ~2700
