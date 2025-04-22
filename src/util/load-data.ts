@@ -1,6 +1,6 @@
 import {readdirSync, readFileSync} from 'fs';
 import {join} from 'path';
-import {CardIds, GameDataTableType, LanguageTableType} from '../api';
+import {CardIds, GameDataTableType, LanguageTableType, LocaTableType} from '../api';
 
 const getFilePathsByType = (path: string, type: number | string) => {
     const res: string[] = [];
@@ -39,4 +39,17 @@ export const loadLanguageTable = <T extends {Id: number;}>(db: string, type: Lan
     }
 
     return languageTable;
+};
+
+export const loadLocaTable = <T extends {Id: number;}>(db: string, type: LocaTableType): Map<number, T> => {
+    const locaTable = new Map<number, T>();
+
+    for (const filePath of getFilePathsByType(db, type)) {
+        const file = JSON.parse(readFileSync(filePath).toString()) as {Entities: T[];};
+        for (const entity of file.Entities) {
+            locaTable.set(entity.Id, entity);
+        }
+    }
+
+    return locaTable;
 };

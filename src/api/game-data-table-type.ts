@@ -79,7 +79,7 @@ export enum LanguageTableType {
 }
 
 export enum LocaTableType {
-    Abilities = 9200,
-    Modes = 9201,
-    Spells = 9202,
+    Ability = 9200,
+    Mode = 9201,
+    Spell = 9202,
 }

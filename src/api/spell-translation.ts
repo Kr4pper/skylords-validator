@@ -4,11 +4,22 @@ export interface SpellTranslation {
     "Text": string,
 }
 
+export interface SpellLoca {
+    "Id": number,
+    "Values": {
+        "Id": SpellLocaType,
+        "Text": string,
+        "Unknown1": boolean,
+    }[],
+}
+
 export enum SpellLocaType {
     Name = 2,
     Description = 3,
     MinDmg = 6,
     MaxDmg = 7,
-    AtkCooldown = 8, // ?
+    AtkCooldown = 8,
     Radius = 14,
+    UpgradeAddMinDmg = 99,
+    UpgradeAddMaxDmg = 100,
 }

@@ -1,6 +1,6 @@
 import {existsSync} from 'fs';
-import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType, DiagnosticContainer, DiagnosticType, Diagnostic, CardIds, PROJECTILE_CHAIN_IDS, SPELL_GAIN_ABILITY_IDS, Building, SPELL_DMG_ABILITY_REF_IDS} from './api';
-import {loadGameData, loadLanguageTable, logger} from './util';
+import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType, DiagnosticContainer, DiagnosticType, Diagnostic, CardIds, PROJECTILE_CHAIN_IDS, SPELL_GAIN_ABILITY_IDS, Building, SPELL_DMG_ABILITY_REF_IDS, SpellLoca, LocaTableType} from './api';
+import {loadGameData, loadLanguageTable, loadLocaTable, logger} from './util';
 
 const dbPath = process.argv[3];
 if (!existsSync(dbPath)) {
@@ -9,6 +9,7 @@ if (!existsSync(dbPath)) {
 
 const cards = loadGameData<Card>(dbPath, GameDataTableType.Card);
 const cardDescriptions = loadGameData<CardDescription>(dbPath, GameDataTableType.CardDescription);
+const cardTranslations = loadLanguageTable<SpellTranslation>(dbPath, LanguageTableType.Card);
 const squads = loadGameData<Squad>(dbPath, GameDataTableType.Squad);
 const buildings = loadGameData<Building>(dbPath, GameDataTableType.Building);
 const units = loadGameData<Unit>(dbPath, GameDataTableType.Unit);
@@ -16,6 +17,7 @@ const modes = loadGameData<Mode>(dbPath, GameDataTableType.Mode);
 const spells = loadGameData<Spell>(dbPath, GameDataTableType.Spell);
 const spellDescriptions = loadGameData<SpellDescription>(dbPath, GameDataTableType.SpellDescription);
 const spellTranslations = loadLanguageTable<SpellTranslation>(dbPath, LanguageTableType.Spell);
+const spellLoca = loadLocaTable<SpellLoca>(dbPath, LocaTableType.Spell);
 const projectiles = loadGameData<Projectile>(dbPath, GameDataTableType.Projectile);
 const abilities = loadGameData<Ability>(dbPath, GameDataTableType.Ability);
 
@@ -24,9 +26,9 @@ const toU0 = (id: number) => {
     return id;
 };
 
-const toProcess = Object.values(playerCards);
+//const toProcess = Object.values(playerCards);
 //const toProcess = [{U0: playerCards.RocketTower.U0}];
-//const toProcess = [playerCards.GrimBahirANature];
+const toProcess = [playerCards.GiantWyrm];
 
 const diagnostics: DiagnosticContainer[] = [];
 const okayList: {id: CardIds, name: string;}[] = [];
@@ -52,7 +54,7 @@ try {
 
         logger.debug(upgrades);
         const cardName = cardDescriptions.get(upgrades.U0).Name;
-        logger.info('Processing', cardName);
+        logger.info(`Processing ${cardName} (id:${upgrades.U0})`);
 
         for (const cardId of Object.values(upgrades)) {
             let diagIssued = false;
@@ -245,15 +247,13 @@ try {
                     logger.debug({spell});
                     logger.debug({C: spell.ParametersContainer.Parameters});
 
-                    // try going via projectile
+                    logger.debug('trying to find projectile');
                     const maybeProjectile = spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.Projectile)?.Value;
                     if (maybeProjectile) {
                         return getProjectileDmg(projectiles.get(maybeProjectile));
                     }
 
-                    // try going via ability
-                    logger.debug('trying to find direct dmg ability');
-
+                    logger.debug('trying to find dmg ability');
                     const maybeDmgAbilities = spell.ParametersContainer.Parameters.filter(p => SPELL_DMG_ABILITY_REF_IDS.includes(p.Id) && p.Value);
                     if (maybeDmgAbilities.length > 0) {
                         logger.debug({maybeDmgAbilities});
@@ -341,11 +341,27 @@ try {
              *  min dmg on unit = min dmg on structure (maybe?)
             */
 
+            /**
+             *  card id -> card translation for text templates
+             *  spell (or ability/proj?) -> spell loca for values
+             *  compare with gathered data about lower upgrade tier
+             * 
+                {
+                    Id: 3001254,
+                    Values: [
+                        { Id: 6, Text: '615', Unknown1: false },
+                        { Id: 7, Text: '925', Unknown1: false },
+                        { Id: 14, Text: '10', Unknown1: false },
+                        { Id: 99, Text: '55', Unknown1: true },
+                        { Id: 100, Text: '85', Unknown1: true }
+                    ]
+                }
+             */
+
             const expectedDp20 = minDmg && maxDmg && attackRate ? squadSize * (minDmg + maxDmg) / 2 * 20 / attackRate * 1000 : undefined;
             const expectedDp20RoundedTo5 = expectedDp20 ? Math.round(5 * Math.round(expectedDp20 / 5)) : undefined;
             const result = {cardName, cardId, upgrade: Math.round(cardId / 1_000_000), listedDp20, listedHealth, attackRate, minDmg, maxDmg, expectedDp20, expectedDp20RoundedTo5, squadSize};
             logger.debug(result);
-
 
             if (expectedDp20RoundedTo5 && listedDp20 !== expectedDp20RoundedTo5) {
                 diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.Dp20Mismatch, listedDp20, expectedDp20: expectedDp20RoundedTo5, attackRate}});
@@ -370,3 +386,9 @@ diagnostics.filter(d => d.diag.type === DiagnosticType.MultipleSquadModesFound).
 logger.warn(`${diagnostics.length} diagnostics`);
 //okayList.forEach(o => logger.debug(`OKAY ${o.name} (id:${o.id})`));
 logger.info(`${okayList.length} cards okay`);
+
+const wyrmLoca = spellLoca.get(1002946)
+logger.debug(wyrmLoca)
+
+const translation = cardTranslations.get(playerCards.BanditLauncherAShadow.U1)
+logger.debug(translation);
