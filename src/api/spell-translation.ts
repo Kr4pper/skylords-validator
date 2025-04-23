@@ -19,9 +19,11 @@ export enum SpellLocaType {
     MinDmg = 6,
     MaxDmg = 7,
     AtkCooldown = 8,
+    SpellCooldown = 12,
+    Duration = 13,
     Radius = 14,
     DelaySeconds = 35,
     UpgradeAddMinDmg = 99,
     UpgradeAddMaxDmg = 100,
-    PowerCostModifier = 121, // ?
+    FlatPowerCostModifier = 121,
 }

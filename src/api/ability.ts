@@ -29,6 +29,7 @@ export enum AbilityParameterIds {
     DelaySteps = 12,
     Damage = 13,
     SpellToCast = 96,
+    SpellToCast2 = 128,
     SpellToGive = 152,
     SpellToCastAfterDelayOnUnit = 215,
     DamageOnSingleStructure2 = 349,
@@ -44,7 +45,10 @@ export enum AbilityParameterIds {
     DamagePerTarget = 424,
     TargetableEntityTypes = 425,
     DamageOnSingleStructure = 437,
+    ChargeableBombAbility = 538,
+    ChargeableBombSpell = 545,
     StartProjectileSpell = 653,
     Interval = 755,
     TotalDamagePerInterval = 756,
+    SpellToCastAfterDelayOnArea = 883,
 }

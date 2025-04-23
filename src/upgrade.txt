@@ -1,0 +1,4 @@
+<IMG TAG="autocast"> <FORMAT TAG="card_spell_name_style"><VAR NAME="spell_name" ID="1001241"></FORMAT TAG> \r\n' +
+      '<FORMAT TAG="delta_card_text_style"><VAR NAME="spell_delta_text" ID="1001241"></FORMAT TAG>\r\n' +
+      '<IMG TAG="passive"> <FORMAT TAG="card_ability_name_style"><VAR NAME="ability_name" ID="1000884"></FORMAT TAG> \r\n' +
+      '<FORMAT TAG="delta_card_text_style"><VAR NAME="ability_delta_text" ID="1000884"></FORMAT TAG>

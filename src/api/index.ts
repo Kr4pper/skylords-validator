@@ -1,4 +1,5 @@
 export * from './ability';
+export * from './ability-loca';
 export * from './building';
 export * from './card';
 export * from './card-description';

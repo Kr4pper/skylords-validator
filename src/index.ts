@@ -1,5 +1,5 @@
 import {existsSync} from 'fs';
-import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType, DiagnosticContainer, DiagnosticType, Diagnostic, CardIds, PROJECTILE_CHAIN_IDS, SPELL_GAIN_ABILITY_IDS, Building, SPELL_DMG_ABILITY_REF_IDS, SpellLoca, LocaTableType, ModeLoca, ModeLocaType, ArmorType, SpellLocaType} from './api';
+import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType, DiagnosticContainer, DiagnosticType, Diagnostic, CardIds, PROJECTILE_CHAIN_IDS, SPELL_GAIN_ABILITY_IDS, Building, SPELL_DMG_ABILITY_REF_IDS, SpellLoca, LocaTableType, ModeLoca, ModeLocaType, ArmorType, SpellLocaType, AbilityLoca, AbilityLocaType} from './api';
 import {loadGameData, loadLanguageTable, loadLocaTable, logger} from './util';
 import {CardLocaType} from './api/card-translation';
 
@@ -24,18 +24,14 @@ const spellTranslations = loadLanguageTable<SpellTranslation>(dbPath, LanguageTa
 const spellLoca = loadLocaTable<SpellLoca>(dbPath, LocaTableType.Spell);
 const projectiles = loadGameData<Projectile>(dbPath, GameDataTableType.Projectile);
 const abilities = loadGameData<Ability>(dbPath, GameDataTableType.Ability);
-
-const toU0 = (id: number) => {
-    while (id > 1_000_000) id -= 1_000_000;
-    return id;
-};
+const abilityLoca = loadLocaTable<AbilityLoca>(dbPath, LocaTableType.Ability);
 
 const toProcess = Object.values(playerCards);
 //const toProcess = [{U0: playerCards.RocketTower.U0}];
-//const toProcess = [playerCards.GiantWyrm];
+//const toProcess = [playerCards.RifleCultists];
 
 const diagnostics: DiagnosticContainer[] = [];
-const okayList: {id: CardIds, name: string;}[] = [];
+const processed: {id: CardIds, name: string;}[] = [];
 
 const CARD_BLACKLIST = [
     playerCards.PhaseTower.U0, // uses an ability instead of a spell to deal dmg
@@ -66,33 +62,20 @@ try {
         logger.info(`Processing ${cardName} (id:${upgrades.U0})`);
 
         for (const cardId of Object.values(upgrades)) {
-            let diagIssued = false;
-
             const card = cards.get(cardId);
             logger.debug({card});
 
             if (card.Type === CardType.Spell) {
                 logger.debug('spell detected, aborting');
-                okayList.push({id: cardId, name: cardName});
+                processed.push({id: cardId, name: cardName});
                 continue;
             }
 
             if (card.IsPromo && (cardId < 2_000_000 || cardId > 3_000_000)) {
                 logger.debug('promo card with upgrade!=2 detected, aborting');
-                okayList.push({id: cardId, name: cardName});
+                processed.push({id: cardId, name: cardName});
                 continue;
             }
-
-
-            /**
-             * Squads
-             * card -> squad by DBEntityId [dmg,hp] -> mode -> spell [cast,resolve,recast] -> parameter -> (projectile if relevant ->) spell -> parameter [dmg,combined dmg]
-             */
-
-            /**
-             * Buildings
-             * card [dmg] -> building by DBEntityId [hp]  -> mode -> spell [cast,resolve,recast] -> parameter -> (projectile if relevant ->) spell -> parameter [duration?,dmg,combined dmg]
-             */
 
             const resolveBasicData = (card: Card): {squadSize: number, listedDp20: number, listedHealth: number, modeIds: number[];} => {
                 switch (card.Type) {
@@ -139,11 +122,13 @@ try {
             const {squadSize, listedDp20, listedHealth, modeIds} = resolveBasicData(card);
             logger.debug({squadSize, listedDp20, listedHealth, modeIds});
 
+            /*
             if (listedDp20 === 0) {
                 logger.debug('card is not an attacker');
                 okayList.push({id: cardId, name: cardName});
                 continue;
             }
+                */
 
             if (modeIds.length === 0) {
                 diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UnsupportedEntity, entity: null}});
@@ -162,7 +147,7 @@ try {
             const getRelevantSpellIds = (card: Card, mode: Mode): number[] => {
                 switch (card.Type) {
                     case CardType.Squad:
-                        return mode.ModeUnitSpells;
+                        return [...mode.ModeUnitSpells, ...mode.ModeSpells];
                     case CardType.Building:
                         return mode.ModeSpells;
                     default:
@@ -170,27 +155,21 @@ try {
                 }
             };
 
-            const spellIds = getRelevantSpellIds(card, mode).filter(id => (spells.get(id).Flags & 8) === 0); // exclude bit 3 = manual cast
+            const spellIds = getRelevantSpellIds(card, mode);
             logger.debug({spellIds});
 
-            if (spellIds.length > 1) {
-                diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.MultipleModeSpellsFound, spellIds}});
-                continue;
+            enum SpellType {
+                AutoCast = 'AutoCast',
+                ManualCast = 'ManualCast',
             }
+            type AutoCastSpell = {type: SpellType.AutoCast, attackRate: number, minDmg: number, maxDmg: number;};
+            type ManualCastSpell = {type: SpellType.ManualCast, powerCost?: number, attackRate?: number, minDmg?: number, maxDmg?: number;};
+            type SpellData = {spell: Spell;} & (AutoCastSpell | ManualCastSpell);
+            const getSpellData = (spellId: number): SpellData => {
+                const spell = spells.get(spellId);
+                logger.debug({spell});
 
-            const getSpellData = (spellId: number): {attackRate: number, minDmg: number, maxDmg: number;} => {
-                const modeSpell = spells.get(spellId);
-                logger.debug({modeSpell});
-
-                if (!modeSpell) {
-                    logger.debug('non-ranged unit detected, aborting');
-                    return {attackRate: undefined, minDmg: undefined, maxDmg: undefined};
-                }
-
-                const attackRate = modeSpell.CastSteps + Math.max(modeSpell.ResolveSteps, modeSpell.RecastSteps); // TODO might be incomplete, AnimationTagId relevant?
-                logger.debug({attackRate});
-
-                const spellName = spellDescriptions.get(toU0(modeSpell.Id)).Name; // U1+ do not have descriptions
+                const spellName = spellDescriptions.get(spell.Id % 1_000_000).Name; // only U0 have descriptions
                 logger.debug({spellName});
 
                 const getProjectileDmg = (projectile: Projectile): [number, number] => {
@@ -202,10 +181,10 @@ try {
                         const chainSpellIds = projectile.ParametersContainer.Parameters.filter(({Id}) => PROJECTILE_CHAIN_IDS.includes(Id)).reduce((ids, {Value}) => [...ids, Value], []);
                         logger.debug({chainSpellIds});
 
-                        const chainDmg = chainSpellIds.map(id => spells.get(id).ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.DamageAgainstFigures).Value);
+                        const chainDmg = chainSpellIds.map(id => spells.get(id).ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.DamageAgainstFigures)?.Value);
                         logger.debug({chainDmg});
 
-                        const total = chainDmg.reduce((sum, v) => sum + v, 0);
+                        const total = chainDmg.reduce((sum, v) => sum + (v || 0), 0);
                         return [total, total];
                     }
 
@@ -231,7 +210,12 @@ try {
                         return getSpellDmg(spells.get(spellToGive));
                     }
 
-                    const spellToCast = parameters.find(p => [AbilityParameterIds.SpellToCastAfterDelayOnUnit, AbilityParameterIds.SpellToCast].includes(p.Id) && p.Value)?.Value;
+                    const spellToCast = parameters.find(p => [
+                        AbilityParameterIds.SpellToCast,
+                        AbilityParameterIds.SpellToCast2,
+                        AbilityParameterIds.SpellToCastAfterDelayOnUnit,
+                        AbilityParameterIds.SpellToCastAfterDelayOnArea,
+                    ].includes(p.Id) && p.Value)?.Value;
                     if (spellToCast) {
                         logger.debug({spellToCast});
                         return getSpellDmg(spells.get(spellToCast));
@@ -258,6 +242,20 @@ try {
                         logger.debug({dmg, delaySteps});
                         return [dmg, dmg];
                     }
+
+                    // bomb charger
+                    const chargeableBombAbility = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.ChargeableBombAbility)?.Value;
+                    if (chargeableBombAbility) {
+                        logger.debug({chargeableBombAbility});
+                        return getAbilityDmg(abilities.get(chargeableBombAbility));
+                    }
+
+                    // bomb collector
+                    const chargeableBombSpell = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.ChargeableBombSpell)?.Value;
+                    if (chargeableBombSpell) {
+                        logger.debug({chargeableBombSpell});
+                        return getSpellDmg(spells.get(chargeableBombSpell));
+                    }
                 };
 
                 const getSpellDmg = (spell: Spell): [number, number] => {
@@ -279,16 +277,27 @@ try {
                         const resolved = maybeDmgAbilities.map(p => getAbilityDmg(abilities.get(p.Value)));
                         logger.debug({resolved});
 
-                        const nonEmpty = resolved.filter(v => v);
+                        const nonEmpty = resolved.filter(v => v).filter(v => v[0] > 0 && v[1] > 0);
 
                         // hack to return the beam dot part
                         if (nonEmpty.length === 2 && cardId % 1_000_000 === playerCards.EvilEye.U0) {
                             return nonEmpty[0];
                         }
 
+                        // hack to return initial dmg
+                        if ([playerCards.GemeyeAShadow.U0, playerCards.GemeyeANature.U0].includes(cardId % 1_000_000)) {
+                            return nonEmpty[0];
+                        }
+
+                        // hack to return initial dmg
+                        if ([playerCards.BatarielAFire.U0, playerCards.BatarielAShadow.U0].includes(cardId % 1_000_000)) {
+                            return nonEmpty[1];
+                        }
+
                         if (nonEmpty.length > 1) {
                             throw new Error('more than one potential dmg ability');
                         }
+
                         if (nonEmpty.length === 1) {
                             return nonEmpty[0];
                         }
@@ -315,21 +324,31 @@ try {
                     if (poisonInitialDmgSpellId) {
                         const poisonInitialDmgSpell = spells.get(poisonInitialDmgSpellId);
                         logger.debug({poisonInitialDmgSpell});
-                        logger.debug({C: spell.ParametersContainer.Parameters});
+                        logger.debug({C: poisonInitialDmgSpell.ParametersContainer.Parameters});
 
                         return getSpellDmg(poisonInitialDmgSpell);
                     }
 
-                    throw new Error('could not resolve damage in ' + cardName + ' spell id is ' + spell.Id);
+                    logger.debug('trying to find bomb controller ability');
+                    const bombControllerAbilityId = spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.BombControllerAbility)?.Value;
+                    if (bombControllerAbilityId) {
+                        const bombControllerAbility = abilities.get(bombControllerAbilityId);
+                        logger.debug({bombControllerAbility});
+                        logger.debug({C: bombControllerAbility.ParametersContainer.Parameters});
+
+                        return getAbilityDmg(bombControllerAbility);
+                    }
+
+                    return [0, 0];
                 };
 
-                logger.debug({C: modeSpell.ParametersContainer.Parameters});
-                const [minDmg, maxDmg] = getSpellDmg(modeSpell);
+                logger.debug({C: spell.ParametersContainer.Parameters});
+                const [minDmg, maxDmg] = getSpellDmg(spell);
                 logger.debug({minDmg, maxDmg});
 
                 const tryScrapeAttackRate = () => {
                     try {
-                        const spellTranslation = spellTranslations.get(modeSpell.Id);
+                        const spellTranslation = spellTranslations.get(spell.Id);
                         logger.debug({spellTranslation});
                         const atkRateContainer = spellTranslation.map(line => new RegExp(/every (\d+) seconds/i).exec(line.Text)).find(v => !!v);
                         return +atkRateContainer[1] * 1000;
@@ -338,18 +357,27 @@ try {
                         return null;
                     }
                 };
-                const scrapedAttackRate = tryScrapeAttackRate();
-                logger.debug({scrapedAttackRate});
 
-                if (scrapedAttackRate) {
-                    diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.HardCodedAttackRate, scrapedAttackRate, attackRate}});
-                    diagIssued = true;
+                if ((spell.Flags & 8) === 0) { // autocast
+                    const attackRate = spell.CastSteps + Math.max(spell.ResolveSteps, spell.RecastSteps); // TODO not correct for some entities, AnimationTagId relevant?
+                    logger.debug({attackRate});
+
+                    const scrapedAttackRate = tryScrapeAttackRate();
+                    logger.debug({scrapedAttackRate});
+
+                    if (scrapedAttackRate) {
+                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.HardCodedAttackRate, scrapedAttackRate, attackRate}});
+                    }
+
+                    return {spell, type: SpellType.AutoCast, attackRate, minDmg, maxDmg};
                 }
-
-                return {attackRate, minDmg, maxDmg};
+                else { // manual cast
+                    return {spell, type: SpellType.ManualCast, minDmg, maxDmg};
+                }
             };
 
-            const {attackRate, minDmg, maxDmg} = getSpellData(spellIds[0]);
+            const spellData = spellIds.reduce((res, id) => ({...res, [id]: getSpellData(id)}), {} as {[key: number]: SpellData;});
+            logger.debug({spellData});
 
             /**
              * Validations:
@@ -359,27 +387,12 @@ try {
              *  min dmg on unit = min dmg on structure (maybe?)
             */
 
-            /**
-             *  card id -> card translation for text templates
-             *  spell delta -> spell loca for values
-             *  {
-                    Id: 3001254,
-                    Values: [
-                        { Id: 6, Text: '615', Unknown1: false },
-                        { Id: 7, Text: '925', Unknown1: false },
-                        { Id: 14, Text: '10', Unknown1: false },
-                        { Id: 99, Text: '55', Unknown1: true },
-                        { Id: 100, Text: '85', Unknown1: true }
-                    ]
-                }
-             *  ability delta 1002038 -> used to represent hp value change
-                ability delta 1002039 -> used to represent dmg value change
-                index mode loca (9201) with ability id for value
-
-             *  compare with gathered data about lower upgrade tier
-             */
-
-            type UpgradeData = {health?: number, dp20?: number, gainMinDmg?: number, gainMaxDmg?: number, newMinDmg?: number, newMaxDmg?: number;};
+            type UpgradeData = {
+                health?: number,
+                dp20?: number,
+                spells?: {id: number, gainMinDmg?: number, gainMaxDmg?: number, newMinDmg?: number, newMaxDmg?: number;}[];
+                abilities?: {id: number, flatIncrease?: number, newValue?: number;}[],
+            };
             const getUpgradeData = (cardId: CardIds): UpgradeData[] => {
                 const translations = cardTranslations.get(cardId);
                 logger.debug({translations});
@@ -391,7 +404,7 @@ try {
 
                 const result: UpgradeData[] = [];
 
-                const EXTRACT_HP_UPGRADE = new RegExp('<FORMAT TAG="card_ability_name_style"><VAR NAME="ability_name" ID="\\d002038"></FORMAT TAG> <FORMAT TAG="delta_card_text_style"><VAR NAME="mode_delta_bonus" ID="(\\d+)"></FORMAT TAG>', 'i');
+                const EXTRACT_HP_UPGRADE = new RegExp('<VAR NAME="ability_name" ID="\\d002038">\\s*</FORMAT TAG>\\s*<FORMAT TAG="delta_card_text_style">\\s*<VAR NAME="mode_delta_bonus" ID="(\\d+)">', 'i');
                 const hpMatch = EXTRACT_HP_UPGRADE.exec(upgradeTemplate.Text);
                 logger.debug({hpMatch});
                 if (hpMatch) {
@@ -401,8 +414,7 @@ try {
                     result.push({health: +delta});
                 }
 
-
-                const EXTRACT_DP20_UPGRADE = new RegExp('<FORMAT TAG="card_ability_name_style"><VAR NAME="ability_name" ID="\\d002039"></FORMAT TAG> <FORMAT TAG="delta_card_text_style"><VAR NAME="mode_delta_bonus" ID="(\\d+)"></FORMAT TAG>', 'i');
+                const EXTRACT_DP20_UPGRADE = new RegExp('<VAR NAME="ability_name" ID="\\d002039"></FORMAT TAG>\\s*<FORMAT TAG="delta_card_text_style">\\s*<VAR NAME="mode_delta_bonus" ID="(\\d+)">', 'i');
                 const dp20Match = EXTRACT_DP20_UPGRADE.exec(upgradeTemplate.Text);
                 logger.debug({dp20Match});
                 if (dp20Match) {
@@ -414,69 +426,102 @@ try {
                     }
                 }
 
+                const EXTRACT_SPELL_DELTA_UPGRADE = new RegExp('<FORMAT TAG="delta_card_text_style"><VAR NAME="spell_delta_text" ID="(\\d+)">', 'ig');
+                const spellUpgrades: UpgradeData['spells'][0][] = [];
+                while (true) {
+                    const spellDeltaMatch = EXTRACT_SPELL_DELTA_UPGRADE.exec(upgradeTemplate.Text);
+                    if (!spellDeltaMatch) {
+                        break;
+                    }
 
-                const EXTRACT_SPELL_DELTA_UPGRADE = new RegExp('<FORMAT TAG="delta_card_text_style"><VAR NAME="spell_delta_text" ID="(\\d+)"></FORMAT TAG>', 'i');
-                const spellDeltaMatch = EXTRACT_SPELL_DELTA_UPGRADE.exec(upgradeTemplate.Text);
-                logger.debug({spellDeltaMatch});
-                if (spellDeltaMatch) {
+                    logger.debug({spellDeltaMatch});
                     const loca = spellLoca.get(+spellDeltaMatch[1]);
                     if (loca) { // make sure typos in mode delta ID dont cause crash 
                         logger.debug({L: loca.Values});
-
-                        const gainMinDmg = loca.Values.find(v => v.Id === SpellLocaType.UpgradeAddMinDmg)?.Text;
-                        if (gainMinDmg) {
-                            result.push({gainMinDmg: +gainMinDmg});
-                        }
-
-                        const gainMaxDmg = loca.Values.find(v => v.Id === SpellLocaType.UpgradeAddMaxDmg)?.Text;
-                        if (gainMaxDmg) {
-                            result.push({gainMaxDmg: +gainMaxDmg});
-                        }
-
-                        const newMinDmg = loca.Values.find(v => v.Id === SpellLocaType.MinDmg)?.Text;
-                        if (newMinDmg) {
-                            result.push({newMinDmg: +newMinDmg});
-                        }
-
-                        const newMaxDmg = loca.Values.find(v => v.Id === SpellLocaType.MaxDmg)?.Text;
-                        if (newMaxDmg) {
-                            result.push({newMaxDmg: +newMaxDmg});
-                        }
+                        const locaMap: Partial<Record<keyof UpgradeData['spells'][0], SpellLocaType>> = {
+                            gainMinDmg: SpellLocaType.UpgradeAddMinDmg,
+                            gainMaxDmg: SpellLocaType.UpgradeAddMaxDmg,
+                            newMinDmg: SpellLocaType.MinDmg,
+                            newMaxDmg: SpellLocaType.MaxDmg,
+                        };
+                        const upgradeValues = Object.entries(locaMap).reduce((res, [key, type]) => {
+                            const entry = loca.Values.find(v => v.Id === type);
+                            if (!entry) return res;
+                            return {...res, [key]: +entry.Text};
+                        }, {id: +spellDeltaMatch[1]} as UpgradeData['spells'][0]);
+                        spellUpgrades.push(upgradeValues);
                     }
                 }
+                result.push({spells: spellUpgrades});
+
+                const EXTRACT_ABILITY_DELTA_UPGRADE = new RegExp('<VAR NAME="ability_delta_text" ID="(\\d+)">', 'ig');
+                const abilityUpgrades: UpgradeData['abilities'][0][] = [];
+                while (true) {
+                    const abilityDeltaMatch = EXTRACT_ABILITY_DELTA_UPGRADE.exec(upgradeTemplate.Text);
+                    if (!abilityDeltaMatch) {
+                        break;
+                    }
+
+                    logger.debug({abilityDeltaMatch});
+                    const loca = abilityLoca.get(+abilityDeltaMatch[1]);
+                    if (loca) { // make sure typos in mode delta ID dont cause crash 
+                        logger.debug({L: loca.Values});
+                        const locaMap: Partial<Record<keyof UpgradeData['abilities'][0], AbilityLocaType>> = {
+                            flatIncrease: AbilityLocaType.FlatIncrease,
+                            newValue: AbilityLocaType.NewValue
+                        };
+                        const upgradeValues = Object.entries(locaMap).reduce((res, [key, type]) => {
+                            const entry = loca.Values.find(v => v.Id === type);
+                            if (!entry) return res;
+                            return {...res, [key]: +entry.Text};
+                        }, {id: +abilityDeltaMatch[1]} as UpgradeData['abilities'][0]);
+                        abilityUpgrades.push(upgradeValues);
+                    }
+                }
+                result.push({abilities: abilityUpgrades});
 
                 return result;
             };
 
             const upgradeData = getUpgradeData(cardId).reduce((aggregate, v) => ({...aggregate, ...v}), {});
-            logger.debug({upgradeData});
+            logger.debug({upgradeData}, upgradeData.spells, upgradeData.abilities);
 
-            const expectedDp20 = minDmg && maxDmg && attackRate ? squadSize * (minDmg + maxDmg) / 2 * 20 / attackRate * 1000 : undefined;
-            const expectedDp20RoundedTo5 = expectedDp20 ? Math.round(5 * Math.round(expectedDp20 / 5)) : undefined;
+            const extractFromAutocastSpell = () => {
+                const autoCastSpell = Object.entries(spellData).find(([_, v]) => v.type === SpellType.AutoCast);
+                if (autoCastSpell) {
+                    const {attackRate, minDmg, maxDmg} = autoCastSpell[1];
+                    const expectedDp20 = minDmg && maxDmg && attackRate ? squadSize * (minDmg + maxDmg) / 2 * 20 / attackRate * 1000 : undefined;
+                    const expectedDp20RoundedTo5 = expectedDp20 ? Math.round(5 * Math.round(expectedDp20 / 5)) : undefined;
+
+                    if (!DP20_BLACKLIST.includes(cardId % 1_000_000)) {
+                        if (expectedDp20RoundedTo5 && listedDp20 !== expectedDp20RoundedTo5) {
+                            diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.Dp20Mismatch, listedDp20, expectedDp20: expectedDp20RoundedTo5, attackRate}});
+                        }
+                    }
+
+                    return {attackRate, minDmg, maxDmg, expectedDp20, expectedDp20RoundedTo5};
+                }
+            };
+
             const result = {
                 cardName,
                 cardId,
                 upgrade: Math.round(cardId / 1_000_000),
-                upgradeData,
+                spells: spellData,
                 listedDp20,
                 listedHealth,
-                attackRate,
-                minDmg,
-                maxDmg,
-                expectedDp20,
-                expectedDp20RoundedTo5,
                 squadSize,
+                ...extractFromAutocastSpell(),
             };
             logger.debug(result);
 
             if (previousUpgrade && upgradeData) {
-                if (upgradeData.dp20) {
+                if (upgradeData.dp20) { // melee units
                     logger.debug('dp20 upgrade sanity check', upgradeData.dp20);
                     const oldValue = previousUpgrade.listedDp20;
                     logger.debug({oldValue, listedDp20, upgrade: upgradeData.dp20, squadSize});
                     if (Math.round(oldValue + squadSize * upgradeData.dp20) !== listedDp20) {
                         diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'dp20', oldValue, newValue: listedDp20, upgradeValue: upgradeData.dp20 * squadSize}});
-                        diagIssued = true;
                     }
                 }
 
@@ -486,60 +531,32 @@ try {
                     logger.debug({oldValue, listedHealth, upgrade: upgradeData.health, squadSize});
                     if (Math.round(oldValue + squadSize * upgradeData.health) !== listedHealth) {
                         diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'health', oldValue, newValue: listedHealth, upgradeValue: upgradeData.health * squadSize}});
-                        diagIssued = true;
                     }
                 }
 
-                if (upgradeData.gainMinDmg) {
-                    logger.debug('gainMinDmg upgrade sanity check', upgradeData.gainMinDmg);
-                    const oldValue = previousUpgrade.minDmg;
-                    logger.debug({oldValue, minDmg, upgrade: upgradeData.gainMinDmg, squadSize});
-                    if (Math.round(oldValue + squadSize * upgradeData.gainMinDmg) !== minDmg) {
-                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'gainMinDmg', oldValue, newValue: minDmg, upgradeValue: upgradeData.gainMinDmg * squadSize}});
-                        diagIssued = true;
-                    }
-                }
+                for (const {id, gainMinDmg, gainMaxDmg, newMinDmg, newMaxDmg} of upgradeData.spells) {
+                    logger.debug('spell upgrade', {id, gainMinDmg, gainMaxDmg, newMinDmg, newMaxDmg});
 
-                if (upgradeData.gainMaxDmg) {
-                    logger.debug('gainMaxDmg upgrade sanity check', upgradeData.gainMaxDmg);
-                    const oldValue = previousUpgrade.maxDmg;
-                    logger.debug({oldValue, maxDmg, upgrade: upgradeData.gainMaxDmg, squadSize});
-                    if (Math.round(oldValue + squadSize * upgradeData.gainMaxDmg) !== maxDmg) {
-                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'gainMaxDmg', oldValue, newValue: maxDmg, upgradeValue: upgradeData.gainMaxDmg * squadSize}});
-                        diagIssued = true;
+                    const oldSpell = previousUpgrade.spells[id - 1_000_000];
+                    if (!oldSpell) {
+                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UnsupportedEntity, entity: 'spell upgrade on spell that was not previously detected'}});
+                        continue;
                     }
-                }
+                    logger.debug(oldSpell, oldSpell.spell.ParametersContainer.Parameters);
 
-                if (upgradeData.newMinDmg) {
-                    logger.debug('newMinDmg upgrade sanity check', upgradeData.newMinDmg);
-                    logger.debug({minDmg, newMinDmg: upgradeData.newMinDmg});
-                    if (upgradeData.newMinDmg !== minDmg) {
-                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'newMinDmg', oldValue: null, newValue: minDmg, upgradeValue: upgradeData.newMinDmg}});
-                        diagIssued = true;
+                    const upgradeMin = gainMinDmg * (oldSpell.type === SpellType.AutoCast ? squadSize : 1);
+                    if (gainMinDmg && Math.round(oldSpell.minDmg + upgradeMin) !== newMinDmg) {
+                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'gainMinDmg', oldValue: oldSpell.minDmg, newValue: newMinDmg, upgradeValue: upgradeMin}});
                     }
-                }
 
-                if (upgradeData.newMaxDmg) {
-                    logger.debug('newMaxDmg upgrade sanity check', upgradeData.newMaxDmg);
-                    logger.debug({maxDmg, newMaxDmg: upgradeData.newMaxDmg});
-                    if (upgradeData.newMaxDmg !== maxDmg) {
-                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'newMaxDmg', oldValue: null, newValue: maxDmg, upgradeValue: upgradeData.newMaxDmg}});
-                        diagIssued = true;
+                    const upgradeMax = gainMaxDmg * (oldSpell.type === SpellType.AutoCast ? squadSize : 1);
+                    if (gainMaxDmg && Math.round(oldSpell.maxDmg + upgradeMax) !== newMaxDmg) {
+                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'gainMaxDmg', oldValue: oldSpell.maxDmg, newValue: newMaxDmg, upgradeValue: upgradeMax}});
                     }
                 }
             }
 
-            if (!DP20_BLACKLIST.includes(cardId % 1_000_000)) {
-                if (expectedDp20RoundedTo5 && listedDp20 !== expectedDp20RoundedTo5) {
-                    diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.Dp20Mismatch, listedDp20, expectedDp20: expectedDp20RoundedTo5, attackRate}});
-                    diagIssued = true;
-                }
-            }
-
-            if (!diagIssued) {
-                okayList.push({id: cardId, name: cardName});
-            }
-
+            processed.push({id: cardId, name: cardName});
             previousUpgrade = result;
         }
     }
@@ -558,12 +575,12 @@ const countByType = (diagnostics: DiagnosticContainer[]) => {
     return res;
 };
 
-diagnostics.filter(d => d.diag.type === DiagnosticType.UpgradeMismatch).forEach(d => logger.warn(prettifyDiagnostic(d)));
+diagnostics.filter(d => d.diag.type === DiagnosticType.UnsupportedEntity).forEach(d => logger.warn(prettifyDiagnostic(d)));
 //diagnostics.forEach(d => logger.warn(prettifyDiagnostic(d)));
 
 logger.warn(`${diagnostics.length} diagnostics`);
 //okayList.forEach(o => logger.debug(`OKAY ${o.name} (id:${o.id})`));
-logger.info(`${okayList.length} cards okay`);
+logger.info(`${processed.length} cards processed`);
 
 logger.info(countByType(diagnostics));
 

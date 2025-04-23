@@ -56,6 +56,7 @@ export enum SpellParameterId {
     DamageAgainstBuildings = 131,
     DamageAgainstWalls = 137,
     Projectile = 278,
+    BombControllerAbility = 281,
     FlameThrowerAbility = 371,
     AbilityOnTarget = 374,
     AbilityOnTarget2 = 375,
