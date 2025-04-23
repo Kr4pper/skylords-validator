@@ -1,7 +1,9 @@
 import {existsSync} from 'fs';
-import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType, DiagnosticContainer, DiagnosticType, Diagnostic, CardIds, PROJECTILE_CHAIN_IDS, SPELL_GAIN_ABILITY_IDS, Building, SPELL_DMG_ABILITY_REF_IDS, SpellLoca, LocaTableType, ModeLoca, ModeLocaType} from './api';
+import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType, DiagnosticContainer, DiagnosticType, Diagnostic, CardIds, PROJECTILE_CHAIN_IDS, SPELL_GAIN_ABILITY_IDS, Building, SPELL_DMG_ABILITY_REF_IDS, SpellLoca, LocaTableType, ModeLoca, ModeLocaType, ArmorType, SpellLocaType} from './api';
 import {loadGameData, loadLanguageTable, loadLocaTable, logger} from './util';
 import {CardLocaType} from './api/card-translation';
+
+console.time('elapsed');
 
 const dbPath = process.argv[3];
 if (!existsSync(dbPath)) {
@@ -30,28 +32,31 @@ const toU0 = (id: number) => {
 
 const toProcess = Object.values(playerCards);
 //const toProcess = [{U0: playerCards.RocketTower.U0}];
-//const toProcess = [playerCards.BanditLauncherAShadow];
+//const toProcess = [playerCards.GiantWyrm];
 
 const diagnostics: DiagnosticContainer[] = [];
 const okayList: {id: CardIds, name: string;}[] = [];
-const BLACKLIST = [
+
+const CARD_BLACKLIST = [
+    playerCards.PhaseTower.U0, // uses an ability instead of a spell to deal dmg
+    playerCards.Mindweaver.U0, // uses an ability instead of a spell to deal dmg
+    playerCards.Molt.U0, // not fully implemented
+    playerCards.Hellhound.U0, // not fully implemented
+    playerCards.Devourer.U0, // not fully implemented
+];
+const DP20_BLACKLIST = [
     playerCards.CorsairANature.U0,
     playerCards.CorsairAShadow.U0,
     playerCards.LostSpiritShipAFire.U0,
     playerCards.LostSpiritShipANature.U0,
     playerCards.Spitfire.U0,
-    playerCards.PhaseTower.U0, // uses an ability instead of a spell to deal dmg
-    playerCards.Mindweaver.U0, // uses an ability instead of a spell to deal dmg
-    playerCards.Molt.U0,
-    playerCards.Hellhound.U0,
-    playerCards.Devourer.U0,
 ];
 
 try {
     for (const upgrades of toProcess) {
         let previousUpgrade = null;
 
-        if (BLACKLIST.includes(upgrades.U0 % 1_000_000)) {
+        if (CARD_BLACKLIST.includes(upgrades.U0 % 1_000_000)) {
             logger.debug('blacklisted card detected');
             continue;
         }
@@ -95,14 +100,24 @@ try {
                         const squad = squads.get(card.DBEntityId);
                         logger.debug({squad});
 
-                        const squadSize = squad.SquadMembers[0].Count;
-                        const squadUnit = units.get(squad.SquadMembers[0].UnitId); // might be wrong for mixed-unit squads
-                        logger.debug({squadUnit});
+                        const unit = units.get(squad.SquadMembers[0].UnitId); // might be wrong for mixed-unit squads
+                        logger.debug({unit});
 
+                        if (unit.ArmorType >= ArmorType.RangedSmall) {
+                            logger.debug('ranged armor type detected', {unit});
+                            diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UsesRangedArmor, armor: unit.ArmorType}});
+                        }
+
+                        if (unit.ArmorType % 4 !== unit.Size % 4) {
+                            logger.debug('incorrect armor type detected', {unit});
+                            diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.SizeArmorMismatch, size: unit.Size, armor: unit.ArmorType}});
+                        }
+
+                        const squadSize = squad.SquadMembers[0].Count;
                         return {
                             squadSize,
-                            listedDp20: Math.round(squadUnit.Archive.Damage * squadSize),
-                            listedHealth: Math.round(squadUnit.Health * squadSize),
+                            listedDp20: Math.round(unit.Archive.Damage * squadSize),
+                            listedHealth: Math.round(unit.Health * squadSize),
                             modeIds: squad.ModeIds
                         };
                     case CardType.Building:
@@ -364,14 +379,17 @@ try {
              *  compare with gathered data about lower upgrade tier
              */
 
-            const getUpgradeData = (cardId: CardIds): {health?: number, dp20?: number;} => {
+            type UpgradeData = {health?: number, dp20?: number, gainMinDmg?: number, gainMaxDmg?: number, newMinDmg?: number, newMaxDmg?: number;};
+            const getUpgradeData = (cardId: CardIds): UpgradeData[] => {
                 const translations = cardTranslations.get(cardId);
                 logger.debug({translations});
 
                 const upgradeTemplate = translations.find(t => t.LocaType === CardLocaType.UpgradeTemplate);
                 if (!upgradeTemplate) {
-                    return {};
+                    return [];
                 }
+
+                const result: UpgradeData[] = [];
 
                 const EXTRACT_HP_UPGRADE = new RegExp('<FORMAT TAG="card_ability_name_style"><VAR NAME="ability_name" ID="\\d002038"></FORMAT TAG> <FORMAT TAG="delta_card_text_style"><VAR NAME="mode_delta_bonus" ID="(\\d+)"></FORMAT TAG>', 'i');
                 const hpMatch = EXTRACT_HP_UPGRADE.exec(upgradeTemplate.Text);
@@ -380,7 +398,7 @@ try {
                     const loca = modeLoca.get(+hpMatch[1]);
                     logger.debug({L: loca.Values});
                     const delta = loca.Values.find(l => [ModeLocaType.HealthModifier, ModeLocaType.HealthModifier2].includes(l.Id)).Text;
-                    return {health: +delta};
+                    result.push({health: +delta});
                 }
 
 
@@ -392,17 +410,63 @@ try {
                     if (loca) { // make sure typos in mode delta ID dont cause crash 
                         logger.debug({L: loca.Values});
                         const delta = loca.Values.find(l => [ModeLocaType.Dp20Modifier, ModeLocaType.Dp20Modifier2].includes(l.Id)).Text;
-                        return {dp20: +delta};
+                        result.push({dp20: +delta});
                     }
                 }
+
+
+                const EXTRACT_SPELL_DELTA_UPGRADE = new RegExp('<FORMAT TAG="delta_card_text_style"><VAR NAME="spell_delta_text" ID="(\\d+)"></FORMAT TAG>', 'i');
+                const spellDeltaMatch = EXTRACT_SPELL_DELTA_UPGRADE.exec(upgradeTemplate.Text);
+                logger.debug({spellDeltaMatch});
+                if (spellDeltaMatch) {
+                    const loca = spellLoca.get(+spellDeltaMatch[1]);
+                    if (loca) { // make sure typos in mode delta ID dont cause crash 
+                        logger.debug({L: loca.Values});
+
+                        const gainMinDmg = loca.Values.find(v => v.Id === SpellLocaType.UpgradeAddMinDmg)?.Text;
+                        if (gainMinDmg) {
+                            result.push({gainMinDmg: +gainMinDmg});
+                        }
+
+                        const gainMaxDmg = loca.Values.find(v => v.Id === SpellLocaType.UpgradeAddMaxDmg)?.Text;
+                        if (gainMaxDmg) {
+                            result.push({gainMaxDmg: +gainMaxDmg});
+                        }
+
+                        const newMinDmg = loca.Values.find(v => v.Id === SpellLocaType.MinDmg)?.Text;
+                        if (newMinDmg) {
+                            result.push({newMinDmg: +newMinDmg});
+                        }
+
+                        const newMaxDmg = loca.Values.find(v => v.Id === SpellLocaType.MaxDmg)?.Text;
+                        if (newMaxDmg) {
+                            result.push({newMaxDmg: +newMaxDmg});
+                        }
+                    }
+                }
+
+                return result;
             };
 
-            const upgradeData = getUpgradeData(cardId);
+            const upgradeData = getUpgradeData(cardId).reduce((aggregate, v) => ({...aggregate, ...v}), {});
             logger.debug({upgradeData});
 
             const expectedDp20 = minDmg && maxDmg && attackRate ? squadSize * (minDmg + maxDmg) / 2 * 20 / attackRate * 1000 : undefined;
             const expectedDp20RoundedTo5 = expectedDp20 ? Math.round(5 * Math.round(expectedDp20 / 5)) : undefined;
-            const result = {cardName, cardId, upgrade: Math.round(cardId / 1_000_000), upgradeData, listedDp20, listedHealth, attackRate, minDmg, maxDmg, expectedDp20, expectedDp20RoundedTo5, squadSize};
+            const result = {
+                cardName,
+                cardId,
+                upgrade: Math.round(cardId / 1_000_000),
+                upgradeData,
+                listedDp20,
+                listedHealth,
+                attackRate,
+                minDmg,
+                maxDmg,
+                expectedDp20,
+                expectedDp20RoundedTo5,
+                squadSize,
+            };
             logger.debug(result);
 
             if (previousUpgrade && upgradeData) {
@@ -411,7 +475,7 @@ try {
                     const oldValue = previousUpgrade.listedDp20;
                     logger.debug({oldValue, listedDp20, upgrade: upgradeData.dp20, squadSize});
                     if (Math.round(oldValue + squadSize * upgradeData.dp20) !== listedDp20) {
-                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'dp20', oldValue, newValue: listedDp20, upgradeValue: upgradeData.dp20}});
+                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'dp20', oldValue, newValue: listedDp20, upgradeValue: upgradeData.dp20 * squadSize}});
                         diagIssued = true;
                     }
                 }
@@ -421,15 +485,55 @@ try {
                     const oldValue = previousUpgrade.listedHealth;
                     logger.debug({oldValue, listedHealth, upgrade: upgradeData.health, squadSize});
                     if (Math.round(oldValue + squadSize * upgradeData.health) !== listedHealth) {
-                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'health', oldValue, newValue: listedHealth, upgradeValue: upgradeData.health}});
+                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'health', oldValue, newValue: listedHealth, upgradeValue: upgradeData.health * squadSize}});
+                        diagIssued = true;
+                    }
+                }
+
+                if (upgradeData.gainMinDmg) {
+                    logger.debug('gainMinDmg upgrade sanity check', upgradeData.gainMinDmg);
+                    const oldValue = previousUpgrade.minDmg;
+                    logger.debug({oldValue, minDmg, upgrade: upgradeData.gainMinDmg, squadSize});
+                    if (Math.round(oldValue + squadSize * upgradeData.gainMinDmg) !== minDmg) {
+                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'gainMinDmg', oldValue, newValue: minDmg, upgradeValue: upgradeData.gainMinDmg * squadSize}});
+                        diagIssued = true;
+                    }
+                }
+
+                if (upgradeData.gainMaxDmg) {
+                    logger.debug('gainMaxDmg upgrade sanity check', upgradeData.gainMaxDmg);
+                    const oldValue = previousUpgrade.maxDmg;
+                    logger.debug({oldValue, maxDmg, upgrade: upgradeData.gainMaxDmg, squadSize});
+                    if (Math.round(oldValue + squadSize * upgradeData.gainMaxDmg) !== maxDmg) {
+                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'gainMaxDmg', oldValue, newValue: maxDmg, upgradeValue: upgradeData.gainMaxDmg * squadSize}});
+                        diagIssued = true;
+                    }
+                }
+
+                if (upgradeData.newMinDmg) {
+                    logger.debug('newMinDmg upgrade sanity check', upgradeData.newMinDmg);
+                    logger.debug({minDmg, newMinDmg: upgradeData.newMinDmg});
+                    if (upgradeData.newMinDmg !== minDmg) {
+                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'newMinDmg', oldValue: null, newValue: minDmg, upgradeValue: upgradeData.newMinDmg}});
+                        diagIssued = true;
+                    }
+                }
+
+                if (upgradeData.newMaxDmg) {
+                    logger.debug('newMaxDmg upgrade sanity check', upgradeData.newMaxDmg);
+                    logger.debug({maxDmg, newMaxDmg: upgradeData.newMaxDmg});
+                    if (upgradeData.newMaxDmg !== maxDmg) {
+                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'newMaxDmg', oldValue: null, newValue: maxDmg, upgradeValue: upgradeData.newMaxDmg}});
                         diagIssued = true;
                     }
                 }
             }
 
-            if (expectedDp20RoundedTo5 && listedDp20 !== expectedDp20RoundedTo5) {
-                diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.Dp20Mismatch, listedDp20, expectedDp20: expectedDp20RoundedTo5, attackRate}});
-                diagIssued = true;
+            if (!DP20_BLACKLIST.includes(cardId % 1_000_000)) {
+                if (expectedDp20RoundedTo5 && listedDp20 !== expectedDp20RoundedTo5) {
+                    diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.Dp20Mismatch, listedDp20, expectedDp20: expectedDp20RoundedTo5, attackRate}});
+                    diagIssued = true;
+                }
             }
 
             if (!diagIssued) {
@@ -447,14 +551,14 @@ const withoutTypeEntry = ({type, ...content}: Diagnostic) => content;
 const prettifyDiagnostic = (diagnostic: DiagnosticContainer) => `${diagnostic.card.name} (id:${diagnostic.card.id}) -> ${diagnostic.diag.type} ${JSON.stringify(withoutTypeEntry(diagnostic.diag))}`;
 
 const countByType = (diagnostics: DiagnosticContainer[]) => {
-    const res: {[key: string]: number;} = {};
+    const res: {[key: string]: number;} = Object.values(DiagnosticType).reduce((aggregate, v) => ({...aggregate, [v]: 0}), {});
     for (const diagnostic of diagnostics) {
         res[diagnostic.diag.type] = (res[diagnostic.diag.type] ?? 0) + 1;
     }
     return res;
 };
 
-diagnostics.filter(d => d.diag.type === DiagnosticType.MultipleSquadModesFound).forEach(d => logger.warn(prettifyDiagnostic(d)));
+diagnostics.filter(d => d.diag.type === DiagnosticType.UpgradeMismatch).forEach(d => logger.warn(prettifyDiagnostic(d)));
 //diagnostics.forEach(d => logger.warn(prettifyDiagnostic(d)));
 
 logger.warn(`${diagnostics.length} diagnostics`);
@@ -462,3 +566,5 @@ logger.warn(`${diagnostics.length} diagnostics`);
 logger.info(`${okayList.length} cards okay`);
 
 logger.info(countByType(diagnostics));
+
+console.timeEnd('elapsed');

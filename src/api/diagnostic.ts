@@ -1,4 +1,5 @@
 import {CardIds} from './card-ids';
+import {ArmorType, SizeType} from './unit';
 
 export enum DiagnosticType {
     Dp20Mismatch = 'Dp20Mismatch',
@@ -7,6 +8,8 @@ export enum DiagnosticType {
     MultipleSquadModesFound = 'MultipleSquadModesFound',
     MultipleModeSpellsFound = 'MultipleModeSpellsFound',
     UpgradeMismatch = 'UpgradeMismatch',
+    UsesRangedArmor = 'UsesRangedArmor',
+    SizeArmorMismatch = 'SizeArmorMismatch',
 }
 
 export type Diagnostic = (
@@ -16,6 +19,8 @@ export type Diagnostic = (
     | {type: DiagnosticType.MultipleSquadModesFound;} & MultipleSquadModesFound
     | {type: DiagnosticType.MultipleModeSpellsFound;} & MultipleModeSpellsFound
     | {type: DiagnosticType.UpgradeMismatch;} & UpgradeMismatch
+    | {type: DiagnosticType.UsesRangedArmor;} & UsesRangedArmor
+    | {type: DiagnosticType.SizeArmorMismatch;} & SizeArmorMismatch
 );
 
 export type DiagnosticContainer = {card: {id: CardIds; name: string;}, diag: Diagnostic;};
@@ -31,3 +36,7 @@ type MultipleModeSpellsFound = {spellIds: number[];};
 type UnsupportedEntity = {entity: string;};
 
 type UpgradeMismatch = {property: string; oldValue: number, newValue: number, upgradeValue: number;};
+
+type UsesRangedArmor = {armor: ArmorType;};
+
+type SizeArmorMismatch = {size: SizeType, armor: ArmorType;};
