@@ -25,5 +25,8 @@ export enum SpellLocaType {
     DelaySeconds = 35,
     UpgradeAddMinDmg = 99,
     UpgradeAddMaxDmg = 100,
+    UpgradeAddMinDmgVsStructure = 101,
     FlatPowerCostModifier = 121,
+    ActiveMaxDmg = 163,
+    ActiveMinDmg = 164,
 }

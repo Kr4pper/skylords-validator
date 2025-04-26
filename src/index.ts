@@ -1,5 +1,5 @@
 import {existsSync} from 'fs';
-import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType, DiagnosticContainer, DiagnosticType, Diagnostic, CardIds, PROJECTILE_CHAIN_IDS, SPELL_GAIN_ABILITY_IDS, Building, SPELL_DMG_ABILITY_REF_IDS, SpellLoca, LocaTableType, ModeLoca, ModeLocaType, ArmorType, SpellLocaType, AbilityLoca, AbilityLocaType} from './api';
+import {Ability, AbilityParameterIds, playerCards, Card, GameDataTableType, Mode, Projectile, Spell, SpellDescription, SpellTranslation, Squad, Unit, CardDescription, LanguageTableType, SpellParameterId, CardType, DiagnosticContainer, DiagnosticType, Diagnostic, CardIds, PROJECTILE_CHAIN_IDS, SPELL_GAIN_ABILITY_IDS, Building, SPELL_DMG_ABILITY_REF_IDS, SpellLoca, LocaTableType, ModeLoca, ModeLocaType, ArmorType, SpellLocaType, AbilityLoca, AbilityLocaType, SpellData, SpellType} from './api';
 import {loadGameData, loadLanguageTable, loadLocaTable, logger} from './util';
 import {CardLocaType} from './api/card-translation';
 
@@ -28,7 +28,7 @@ const abilityLoca = loadLocaTable<AbilityLoca>(dbPath, LocaTableType.Ability);
 
 const toProcess = Object.values(playerCards);
 //const toProcess = [{U0: playerCards.RocketTower.U0}];
-//const toProcess = [playerCards.RifleCultists];
+//const toProcess = [playerCards.EnergyCore];
 
 const diagnostics: DiagnosticContainer[] = [];
 const processed: {id: CardIds, name: string;}[] = [];
@@ -47,10 +47,24 @@ const DP20_BLACKLIST = [
     playerCards.LostSpiritShipANature.U0,
     playerCards.Spitfire.U0,
 ];
+const TICK_LENGTH_MS = 100;
 
 try {
     for (const upgrades of toProcess) {
-        let previousUpgrade = null;
+        let previousUpgrade: {
+            cardName: string,
+            cardId: number,
+            upgrade: number,
+            spells: {[key: string]: SpellData;};
+            listedDp20: number,
+            listedHealth: number,
+            squadSize: number,
+            attackRate?: number,
+            minDmg?: number;
+            maxDmg?: number,
+            expectedDp20?: number,
+            expectedDp20RoundedTo5?: number;
+        } = null;
 
         if (CARD_BLACKLIST.includes(upgrades.U0 % 1_000_000)) {
             logger.debug('blacklisted card detected');
@@ -122,14 +136,6 @@ try {
             const {squadSize, listedDp20, listedHealth, modeIds} = resolveBasicData(card);
             logger.debug({squadSize, listedDp20, listedHealth, modeIds});
 
-            /*
-            if (listedDp20 === 0) {
-                logger.debug('card is not an attacker');
-                okayList.push({id: cardId, name: cardName});
-                continue;
-            }
-                */
-
             if (modeIds.length === 0) {
                 diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UnsupportedEntity, entity: null}});
                 continue;
@@ -158,13 +164,7 @@ try {
             const spellIds = getRelevantSpellIds(card, mode);
             logger.debug({spellIds});
 
-            enum SpellType {
-                AutoCast = 'AutoCast',
-                ManualCast = 'ManualCast',
-            }
-            type AutoCastSpell = {type: SpellType.AutoCast, attackRate: number, minDmg: number, maxDmg: number;};
-            type ManualCastSpell = {type: SpellType.ManualCast, powerCost?: number, attackRate?: number, minDmg?: number, maxDmg?: number;};
-            type SpellData = {spell: Spell;} & (AutoCastSpell | ManualCastSpell);
+            type DmgContainer = {minDmg: number, maxDmg: number, minStructureDmg?: number; dmgInterval?: number;};
             const getSpellData = (spellId: number): SpellData => {
                 const spell = spells.get(spellId);
                 logger.debug({spell});
@@ -172,7 +172,7 @@ try {
                 const spellName = spellDescriptions.get(spell.Id % 1_000_000).Name; // only U0 have descriptions
                 logger.debug({spellName});
 
-                const getProjectileDmg = (projectile: Projectile): [number, number] => {
+                const getProjectileDmg = (projectile: Projectile): DmgContainer => {
                     logger.debug({projectile});
                     logger.debug({C: projectile.ParametersContainer.Parameters});
 
@@ -185,46 +185,57 @@ try {
                         logger.debug({chainDmg});
 
                         const total = chainDmg.reduce((sum, v) => sum + (v || 0), 0);
-                        return [total, total];
+                        return {minDmg: total, maxDmg: total};
                     }
 
                     const projectileSpell = spells.get(projectile.TargetSpellId);
                     return getSpellDmg(projectileSpell);
                 };
 
-                const getAbilityDmg = (ability: Ability): [number, number] => {
+                const getAbilityDmg = (ability: Ability): DmgContainer => {
                     const parameters = ability.ParametersContainer.Parameters;
                     logger.debug('getAbilityDmg', ability.Id, parameters);
 
-                    const minDmg = parameters.find(p => [AbilityParameterIds.DamageOnSingleUnit, AbilityParameterIds.DamagePerTarget].includes(p.Id))?.Value;
-                    const maxDmg = parameters.find(p => [AbilityParameterIds.TotalCombinedDamage, AbilityParameterIds.TotalDamage].includes(p.Id))?.Value;
-                    logger.debug({minDmg, maxDmg});
-                    if (minDmg && maxDmg) {
+                    const minDmgId = [AbilityParameterIds.DamageOnSingleUnit, AbilityParameterIds.DamagePerTarget].find(id => parameters.find(p => p.Id === id));
+                    const maxDmgId = [AbilityParameterIds.TotalCombinedDamage, AbilityParameterIds.TotalDamage].find(id => parameters.find(p => p.Id === id));
+                    if (minDmgId && maxDmgId) {
+                        const minDmg = parameters.find(p => p.Id === minDmgId).Value;
+                        const maxDmg = parameters.find(p => p.Id === maxDmgId).Value;
+                        const minStructureDmg = parameters.find(p => p.Id === AbilityParameterIds.DamageOnSingleStructure)?.Value;
+                        logger.debug({minDmg, maxDmg, minStructureDmg});
                         logger.debug('returning min, max');
-                        return [minDmg, maxDmg];
-                    }
-
-                    const spellToGive = parameters.find(p => p.Id === AbilityParameterIds.SpellToGive)?.Value;
-                    if (spellToGive) {
-                        logger.debug({spellToGive});
-                        return getSpellDmg(spells.get(spellToGive));
+                        return {minDmg, maxDmg, minStructureDmg};
                     }
 
                     const spellToCast = parameters.find(p => [
                         AbilityParameterIds.SpellToCast,
                         AbilityParameterIds.SpellToCast2,
+                        AbilityParameterIds.SpellToCast3,
                         AbilityParameterIds.SpellToCastAfterDelayOnUnit,
                         AbilityParameterIds.SpellToCastAfterDelayOnArea,
+                        AbilityParameterIds.SpellToGive,
+                        AbilityParameterIds.ChargeableBombSpell,
+                        AbilityParameterIds.StartProjectileSpell,
+                        AbilityParameterIds.SpellToApply,
+                        AbilityParameterIds.ResSpellName,
+                        AbilityParameterIds.PlaceMines,
+                        AbilityParameterIds.SpellToCastOnTarget,
+                        AbilityParameterIds.SpellFork,
                     ].includes(p.Id) && p.Value)?.Value;
                     if (spellToCast) {
                         logger.debug({spellToCast});
                         return getSpellDmg(spells.get(spellToCast));
                     }
 
-                    const startProjectileSpell = parameters.find(p => p.Id === AbilityParameterIds.StartProjectileSpell)?.Value;
-                    if (startProjectileSpell) {
-                        logger.debug({startProjectileSpell});
-                        return getSpellDmg(spells.get(startProjectileSpell));
+                    const abilityToCast = parameters.find(p => [
+                        AbilityParameterIds.ChargeableBombAbility,
+                        AbilityParameterIds.OverchargeAbility,
+                        AbilityParameterIds.AbilityToGain,
+                        AbilityParameterIds.AbilityToGain2,
+                    ].includes(p.Id) && p.Value)?.Value;
+                    if (abilityToCast) {
+                        logger.debug({abilityToCast});
+                        return getAbilityDmg(abilities.get(abilityToCast));
                     }
 
                     // flame thrower
@@ -232,7 +243,7 @@ try {
                     const dmgDamagePerInterval = parameters.find(p => p.Id === AbilityParameterIds.TotalDamagePerInterval)?.Value;
                     if (interval && dmgDamagePerInterval) {
                         logger.debug({interval, dmgDamagePerInterval});
-                        return [dmgDamagePerInterval, dmgDamagePerInterval];
+                        return {minDmg: dmgDamagePerInterval, maxDmg: dmgDamagePerInterval, dmgInterval: interval};
                     }
 
                     // beam dot
@@ -240,31 +251,17 @@ try {
                     const delaySteps = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.DelaySteps)?.Value; // take this into account here?
                     if (dmg && delaySteps) {
                         logger.debug({dmg, delaySteps});
-                        return [dmg, dmg];
-                    }
-
-                    // bomb charger
-                    const chargeableBombAbility = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.ChargeableBombAbility)?.Value;
-                    if (chargeableBombAbility) {
-                        logger.debug({chargeableBombAbility});
-                        return getAbilityDmg(abilities.get(chargeableBombAbility));
-                    }
-
-                    // bomb collector
-                    const chargeableBombSpell = ability.ParametersContainer.Parameters.find(p => p.Id === AbilityParameterIds.ChargeableBombSpell)?.Value;
-                    if (chargeableBombSpell) {
-                        logger.debug({chargeableBombSpell});
-                        return getSpellDmg(spells.get(chargeableBombSpell));
+                        return {minDmg: dmg, maxDmg: dmg, dmgInterval: delaySteps};
                     }
                 };
 
-                const getSpellDmg = (spell: Spell): [number, number] => {
+                const getSpellDmg = (spell: Spell): DmgContainer => {
                     logger.debug('getSpellDmg', spell.Id);
                     logger.debug({spell});
                     logger.debug({C: spell.ParametersContainer.Parameters});
 
                     logger.debug('trying to find projectile');
-                    const maybeProjectile = spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.Projectile)?.Value;
+                    const maybeProjectile = spell.ParametersContainer.Parameters.find(p => [SpellParameterId.Projectile, SpellParameterId.Projectile2].includes(p.Id))?.Value;
                     if (maybeProjectile) {
                         return getProjectileDmg(projectiles.get(maybeProjectile));
                     }
@@ -277,7 +274,7 @@ try {
                         const resolved = maybeDmgAbilities.map(p => getAbilityDmg(abilities.get(p.Value)));
                         logger.debug({resolved});
 
-                        const nonEmpty = resolved.filter(v => v).filter(v => v[0] > 0 && v[1] > 0);
+                        const nonEmpty = resolved.filter(v => v).filter(v => v.minDmg > 0 || v.maxDmg > 0);
 
                         // hack to return the beam dot part
                         if (nonEmpty.length === 2 && cardId % 1_000_000 === playerCards.EvilEye.U0) {
@@ -303,10 +300,27 @@ try {
                         }
                     }
 
+                    logger.debug('trying to find dmg spell');
+                    const maybeDmgSpells = spell.ParametersContainer.Parameters.filter(p => [SpellParameterId.SuicideBombSpell, SpellParameterId.PoisonInitialDmgSpell, SpellParameterId.OverchargeSpell].includes(p.Id) && p.Value);
+                    if (maybeDmgSpells.length > 0) {
+                        logger.debug({maybeDmgAbilities});
+
+                        const resolved = maybeDmgSpells.map(p => getSpellDmg(spells.get(p.Value)));
+                        logger.debug({resolved});
+
+                        const nonEmpty = resolved.filter(v => v).filter(v => v.minDmg > 0 || v.maxDmg > 0);
+                        logger.debug({nonEmpty})
+
+                        if (nonEmpty.length === 1) {
+                            return nonEmpty[0];
+                        }
+                    }
+
                     logger.debug('trying to find dmg properties in spell');
-                    const dmg = spell.ParametersContainer.Parameters.find(p => [SpellParameterId.DamageAgainstFigures, SpellParameterId.DamageAgainstSquad].includes(p.Id) && p.Value)?.Value;
-                    if (dmg) {
-                        return [dmg, dmg]; // TODO also look for max dmg here?
+                    const minDmg = spell.ParametersContainer.Parameters.find(p => [SpellParameterId.DamageAgainstFigures, SpellParameterId.DamageAgainstFigures2, SpellParameterId.DamageAgainstSquad].includes(p.Id) && p.Value)?.Value;
+                    if (minDmg) {
+                        const maxDmg = spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.MaxDmg)?.Value;
+                        return {minDmg: minDmg, maxDmg: maxDmg || minDmg};
                     }
 
                     logger.debug('trying to find suicide attack spell');
@@ -329,21 +343,11 @@ try {
                         return getSpellDmg(poisonInitialDmgSpell);
                     }
 
-                    logger.debug('trying to find bomb controller ability');
-                    const bombControllerAbilityId = spell.ParametersContainer.Parameters.find(p => p.Id === SpellParameterId.BombControllerAbility)?.Value;
-                    if (bombControllerAbilityId) {
-                        const bombControllerAbility = abilities.get(bombControllerAbilityId);
-                        logger.debug({bombControllerAbility});
-                        logger.debug({C: bombControllerAbility.ParametersContainer.Parameters});
-
-                        return getAbilityDmg(bombControllerAbility);
-                    }
-
-                    return [0, 0];
+                    return {minDmg: 0, maxDmg: 0};
                 };
 
                 logger.debug({C: spell.ParametersContainer.Parameters});
-                const [minDmg, maxDmg] = getSpellDmg(spell);
+                const {minDmg, maxDmg, minStructureDmg, dmgInterval} = getSpellDmg(spell);
                 logger.debug({minDmg, maxDmg});
 
                 const tryScrapeAttackRate = () => {
@@ -359,7 +363,11 @@ try {
                 };
 
                 if ((spell.Flags & 8) === 0) { // autocast
-                    const attackRate = spell.CastSteps + Math.max(spell.ResolveSteps, spell.RecastSteps); // TODO not correct for some entities, AnimationTagId relevant?
+                    // TODO fix this, might need different calc if ResolveSteps is 0
+                    const attackRate = TICK_LENGTH_MS * (spell.RecastSteps === 0
+                        ? (Math.floor(spell.CastSteps / TICK_LENGTH_MS) + Math.floor(Math.max(spell.ResolveSteps, spell.RecastSteps) / TICK_LENGTH_MS))
+                        : (Math.floor((spell.CastSteps + Math.max(spell.ResolveSteps, spell.RecastSteps)) / TICK_LENGTH_MS))
+                    );
                     logger.debug({attackRate});
 
                     const scrapedAttackRate = tryScrapeAttackRate();
@@ -369,10 +377,11 @@ try {
                         diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.HardCodedAttackRate, scrapedAttackRate, attackRate}});
                     }
 
-                    return {spell, type: SpellType.AutoCast, attackRate, minDmg, maxDmg};
+                    return {spell, type: SpellType.AutoCast, attackRate, minDmg, maxDmg, minStructureDmg};
                 }
                 else { // manual cast
-                    return {spell, type: SpellType.ManualCast, minDmg, maxDmg};
+                    logger.debug('manual', {spell}, spell.ParametersContainer.Parameters);
+                    return {spell, type: SpellType.ManualCast, minDmg, maxDmg, minStructureDmg, powerCost: spell.ProductionPower};
                 }
             };
 
@@ -390,13 +399,11 @@ try {
             type UpgradeData = {
                 health?: number,
                 dp20?: number,
-                spells?: {id: number, gainMinDmg?: number, gainMaxDmg?: number, newMinDmg?: number, newMaxDmg?: number;}[];
+                spells?: {id: number, gainMinDmg?: number, gainMaxDmg?: number, gainMinStructureDmg?: number, newMinDmg?: number, newMaxDmg?: number; gainPowerCost?: number;}[];
                 abilities?: {id: number, flatIncrease?: number, newValue?: number;}[],
             };
             const getUpgradeData = (cardId: CardIds): UpgradeData[] => {
                 const translations = cardTranslations.get(cardId);
-                logger.debug({translations});
-
                 const upgradeTemplate = translations.find(t => t.LocaType === CardLocaType.UpgradeTemplate);
                 if (!upgradeTemplate) {
                     return [];
@@ -406,21 +413,19 @@ try {
 
                 const EXTRACT_HP_UPGRADE = new RegExp('<VAR NAME="ability_name" ID="\\d002038">\\s*</FORMAT TAG>\\s*<FORMAT TAG="delta_card_text_style">\\s*<VAR NAME="mode_delta_bonus" ID="(\\d+)">', 'i');
                 const hpMatch = EXTRACT_HP_UPGRADE.exec(upgradeTemplate.Text);
-                logger.debug({hpMatch});
                 if (hpMatch) {
                     const loca = modeLoca.get(+hpMatch[1]);
-                    logger.debug({L: loca.Values});
+                    logger.debug('hpMatch', {L: loca.Values});
                     const delta = loca.Values.find(l => [ModeLocaType.HealthModifier, ModeLocaType.HealthModifier2].includes(l.Id)).Text;
                     result.push({health: +delta});
                 }
 
                 const EXTRACT_DP20_UPGRADE = new RegExp('<VAR NAME="ability_name" ID="\\d002039"></FORMAT TAG>\\s*<FORMAT TAG="delta_card_text_style">\\s*<VAR NAME="mode_delta_bonus" ID="(\\d+)">', 'i');
                 const dp20Match = EXTRACT_DP20_UPGRADE.exec(upgradeTemplate.Text);
-                logger.debug({dp20Match});
                 if (dp20Match) {
                     const loca = modeLoca.get(+dp20Match[1]);
                     if (loca) { // make sure typos in mode delta ID dont cause crash 
-                        logger.debug({L: loca.Values});
+                        logger.debug('dp20Match', {L: loca.Values});
                         const delta = loca.Values.find(l => [ModeLocaType.Dp20Modifier, ModeLocaType.Dp20Modifier2].includes(l.Id)).Text;
                         result.push({dp20: +delta});
                     }
@@ -434,21 +439,92 @@ try {
                         break;
                     }
 
-                    logger.debug({spellDeltaMatch});
-                    const loca = spellLoca.get(+spellDeltaMatch[1]);
+                    const id = +spellDeltaMatch[1];
+                    const loca = spellLoca.get(id);
                     if (loca) { // make sure typos in mode delta ID dont cause crash 
-                        logger.debug({L: loca.Values});
-                        const locaMap: Partial<Record<keyof UpgradeData['spells'][0], SpellLocaType>> = {
-                            gainMinDmg: SpellLocaType.UpgradeAddMinDmg,
-                            gainMaxDmg: SpellLocaType.UpgradeAddMaxDmg,
-                            newMinDmg: SpellLocaType.MinDmg,
-                            newMaxDmg: SpellLocaType.MaxDmg,
+                        logger.debug('spellMatch', {L: loca.Values});
+                        const locaMap: Partial<Record<keyof UpgradeData['spells'][0], SpellLocaType[]>> = {
+                            gainMinDmg: [SpellLocaType.UpgradeAddMinDmg],
+                            gainMaxDmg: [SpellLocaType.UpgradeAddMaxDmg],
+                            gainMinStructureDmg: [SpellLocaType.UpgradeAddMinDmgVsStructure],
+                            newMinDmg: [SpellLocaType.ActiveMinDmg, SpellLocaType.MinDmg],
+                            newMaxDmg: [SpellLocaType.ActiveMaxDmg, SpellLocaType.MaxDmg],
+                            gainPowerCost: [SpellLocaType.FlatPowerCostModifier],
                         };
-                        const upgradeValues = Object.entries(locaMap).reduce((res, [key, type]) => {
-                            const entry = loca.Values.find(v => v.Id === type);
-                            if (!entry) return res;
-                            return {...res, [key]: +entry.Text};
-                        }, {id: +spellDeltaMatch[1]} as UpgradeData['spells'][0]);
+                        let upgradeValues = Object.entries(locaMap).reduce((res, [key, types]) => {
+                            const type = types.find(t => loca.Values.find(v => v.Id === t));
+                            if (!type) return res;
+
+                            const value = +loca.Values.find(v => v.Id === type)?.Text;
+                            return {...res, [key]: value};
+                        }, {id} as UpgradeData['spells'][0]);
+
+                        // burrower spit bug handling
+                        if (id % 1_000_000 === 1151) {
+                            const tmp = upgradeValues.gainMaxDmg;
+                            upgradeValues.gainMaxDmg = upgradeValues.gainMinStructureDmg;
+                            upgradeValues.gainMinStructureDmg = tmp;
+                        }
+
+                        // winter witch beam bug handling ?
+                        if (id % 1_000_000 === 964) {
+                            upgradeValues.gainMaxDmg = 0;
+                        }
+
+                        // winter witch beam bug handling ?
+                        if (id % 1_000_000 === 1391) {
+                            upgradeValues.gainMaxDmg = 0;
+                        }
+
+                        // remove dangling dreadcharger reaping reference
+                        if (id % 1_000_000 === 1849) {
+                            upgradeValues.id = null;
+                        }
+
+                        // morklay trap U3 contains too much loca info
+                        if (id === 3001561) {
+                            upgradeValues.gainMinDmg = 0;
+                            upgradeValues.gainMaxDmg = 0;
+                        }
+
+                        // remove dangling frontier keep reference
+                        if (id === 3002554 || id === 3002875) {
+                            upgradeValues.id = null;
+                        }
+
+                        // infernal machine shadow hack
+                        if (id === 3002552) {
+                            upgradeValues.id = 3002994;
+                        }
+
+                        // infernal machine fire hack
+                        if (id === 3002888) {
+                            upgradeValues.id = 3002995;
+                        }
+
+                        // stonekin rageflame (fire+frost) freeze delay
+                        if ([1002597, 2002597, 1002914, 2002914].includes(id)) {
+                            upgradeValues.id = null;
+                        }
+
+                        // satanael setting incorrect power modifier
+                        if (id === 1003122 || id === 2003122) {
+                            upgradeValues.gainPowerCost = 0;
+                        }
+
+                        // amii paladins excessive dmg modifier, incorrect power modifier
+                        if (id === 1020050) {
+                            upgradeValues.gainMaxDmg = null;
+                            upgradeValues.gainPowerCost = null;
+                        }
+
+                        // evil eye hack
+                        if (id % 1_000_000 === 50400) {
+                            const atkCooldown = +loca.Values.find(v => v.Id === SpellLocaType.AtkCooldown).Text;
+                            upgradeValues.gainMinDmg = Math.round(upgradeValues.gainMinDmg * +atkCooldown);
+                            upgradeValues.gainMaxDmg = Math.round(upgradeValues.gainMaxDmg * +atkCooldown);
+                        }
+
                         spellUpgrades.push(upgradeValues);
                     }
                 }
@@ -462,10 +538,9 @@ try {
                         break;
                     }
 
-                    logger.debug({abilityDeltaMatch});
                     const loca = abilityLoca.get(+abilityDeltaMatch[1]);
                     if (loca) { // make sure typos in mode delta ID dont cause crash 
-                        logger.debug({L: loca.Values});
+                        logger.debug('abilityMatch', {L: loca.Values});
                         const locaMap: Partial<Record<keyof UpgradeData['abilities'][0], AbilityLocaType>> = {
                             flatIncrease: AbilityLocaType.FlatIncrease,
                             newValue: AbilityLocaType.NewValue
@@ -534,24 +609,41 @@ try {
                     }
                 }
 
-                for (const {id, gainMinDmg, gainMaxDmg, newMinDmg, newMaxDmg} of upgradeData.spells) {
-                    logger.debug('spell upgrade', {id, gainMinDmg, gainMaxDmg, newMinDmg, newMaxDmg});
+                for (const {id, gainMinDmg, gainMaxDmg, gainMinStructureDmg, newMinDmg, newMaxDmg, gainPowerCost} of upgradeData.spells) {
+                    logger.debug('spell upgrade', {id, gainMinDmg, gainMaxDmg, gainMinStructureDmg, newMinDmg, newMaxDmg, gainPowerCost});
 
                     const oldSpell = previousUpgrade.spells[id - 1_000_000];
                     if (!oldSpell) {
-                        diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UnsupportedEntity, entity: 'spell upgrade on spell that was not previously detected'}});
                         continue;
                     }
-                    logger.debug(oldSpell, oldSpell.spell.ParametersContainer.Parameters);
+                    logger.debug({oldSpell});
+                    const {minDmg: currentMinDmg, maxDmg: currentMaxDmg, minStructureDmg: currentMinStructureDmg, spell: currentSpell} = Object.values(spellData).find(v => v.spell.Id === id);
 
                     const upgradeMin = gainMinDmg * (oldSpell.type === SpellType.AutoCast ? squadSize : 1);
-                    if (gainMinDmg && Math.round(oldSpell.minDmg + upgradeMin) !== newMinDmg) {
+                    if (gainMinDmg && Math.round(oldSpell.minDmg + upgradeMin) !== currentMinDmg) {
                         diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'gainMinDmg', oldValue: oldSpell.minDmg, newValue: newMinDmg, upgradeValue: upgradeMin}});
+                        if (cardId !== 2001600 && cardId !== 2001604) throw 1; // infected tower has a bug on listed gainMinDmg of U2
                     }
 
                     const upgradeMax = gainMaxDmg * (oldSpell.type === SpellType.AutoCast ? squadSize : 1);
-                    if (gainMaxDmg && Math.round(oldSpell.maxDmg + upgradeMax) !== newMaxDmg) {
+                    if (gainMaxDmg && Math.round(oldSpell.maxDmg + upgradeMax) !== currentMaxDmg) {
                         diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'gainMaxDmg', oldValue: oldSpell.maxDmg, newValue: newMaxDmg, upgradeValue: upgradeMax}});
+                        throw 1;
+                    }
+
+                    if (gainMinStructureDmg && currentMinStructureDmg) {
+                        if (currentMinStructureDmg !== Math.round(oldSpell.minStructureDmg + gainMinStructureDmg)) {
+                            diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'gainMinStructureDmg', oldValue: oldSpell.minStructureDmg, newValue: currentMinStructureDmg, upgradeValue: gainMinStructureDmg}});
+                            throw 1;
+                        }
+                    }
+
+                    if (gainPowerCost) {
+                        const currentPowerCost = currentSpell.ProductionPower;
+                        if (gainPowerCost !== Math.round(oldSpell.spell.ProductionPower - currentPowerCost)) {
+                            diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'powerCost', oldValue: oldSpell.spell.ProductionPower, newValue: currentPowerCost, upgradeValue: gainPowerCost}});
+                            throw 1;
+                        }
                     }
                 }
             }
@@ -575,7 +667,7 @@ const countByType = (diagnostics: DiagnosticContainer[]) => {
     return res;
 };
 
-diagnostics.filter(d => d.diag.type === DiagnosticType.UnsupportedEntity).forEach(d => logger.warn(prettifyDiagnostic(d)));
+diagnostics.filter(d => d.diag.type === DiagnosticType.UpgradeMismatch).forEach(d => logger.warn(prettifyDiagnostic(d)));
 //diagnostics.forEach(d => logger.warn(prettifyDiagnostic(d)));
 
 logger.warn(`${diagnostics.length} diagnostics`);

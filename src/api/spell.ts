@@ -55,8 +55,12 @@ export enum SpellParameterId {
     DamageAgainstFigures = 130,
     DamageAgainstBuildings = 131,
     DamageAgainstWalls = 137,
+    MaxDmg = 142,
+    DamageAgainstFigures2 = 143,
+    Projectile2 = 171,
     Projectile = 278,
     BombControllerAbility = 281,
+    AbilityOnSelf = 368,
     FlameThrowerAbility = 371,
     AbilityOnTarget = 374,
     AbilityOnTarget2 = 375,
@@ -66,11 +70,13 @@ export enum SpellParameterId {
     DamageAgainstSquad = 440,
     PoisonInitialDmgSpell = 456,
     PoisonDmgSpell = 457,
+    OverchargeSpell = 461,
     AbilityToGain2 = 464,
     AbilityToGain3 = 465,
     AbilityToGain4 = 466,
     AbilityToGain5 = 467,
     AbilityToGain6 = 468,
+    AbilityToGain7 = 477,
     SuicideBombSpell = 557,
 }
 
@@ -81,11 +87,23 @@ export const SPELL_GAIN_ABILITY_IDS = [
     SpellParameterId.AbilityToGain4,
     SpellParameterId.AbilityToGain5,
     SpellParameterId.AbilityToGain6,
+    SpellParameterId.AbilityToGain7,
 ];
 
 export const SPELL_DMG_ABILITY_REF_IDS = [
     ...SPELL_GAIN_ABILITY_IDS,
     SpellParameterId.FlameThrowerAbility,
+    SpellParameterId.BombControllerAbility,
     SpellParameterId.AbilityOnTarget,
     SpellParameterId.AbilityOnTarget2,
-]
+    SpellParameterId.AbilityOnSelf,
+];
+
+
+export enum SpellType {
+    AutoCast = 'AutoCast',
+    ManualCast = 'ManualCast',
+}
+type AutoCastSpell = {type: SpellType.AutoCast, attackRate: number, minDmg: number, maxDmg: number, minStructureDmg?: number;};
+type ManualCastSpell = {type: SpellType.ManualCast, powerCost?: number, attackRate?: number, minDmg?: number, maxDmg?: number, minStructureDmg?: number;};
+export type SpellData = {spell: Spell;} & (AutoCastSpell | ManualCastSpell);

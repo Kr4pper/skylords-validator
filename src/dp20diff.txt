@@ -274,3 +274,10 @@ WARN  Bedrock (Shadow affinity) (id:1696) -> Dp20Mismatch {"listedDp20":4780,"ex
 WARN  Bedrock (Shadow affinity) (id:1001696) -> Dp20Mismatch {"listedDp20":4940,"expectedDp20":4685}
 WARN  Bedrock (Shadow affinity) (id:2001696) -> Dp20Mismatch {"listedDp20":4940,"expectedDp20":4685}
 WARN  Bedrock (Shadow affinity) (id:3001696) -> Dp20Mismatch {"listedDp20":5280,"expectedDp20":5000}
+
+Infected Tower
+CastSteps: 500,
+ResolveSteps: 500,
+RecastSteps: 1500,
+in game ~2300
+in game dp20 based on atk rate ~2350

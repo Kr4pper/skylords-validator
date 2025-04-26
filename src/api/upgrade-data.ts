@@ -3,4 +3,5 @@ export interface UpgradeData {
     maxDmg?: number,
     health?: number,
     dp20?: number,
+    powerCost?: number,
 }
