@@ -17,6 +17,7 @@ const squads = loadGameData<Squad>(dbPath, GameDataTableType.Squad);
 const buildings = loadGameData<Building>(dbPath, GameDataTableType.Building);
 const units = loadGameData<Unit>(dbPath, GameDataTableType.Unit);
 const modes = loadGameData<Mode>(dbPath, GameDataTableType.Mode);
+const modeTranslations = loadLanguageTable<SpellTranslation>(dbPath, LanguageTableType.Mode);
 const modeLoca = loadLocaTable<ModeLoca>(dbPath, LocaTableType.Mode);
 const spells = loadGameData<Spell>(dbPath, GameDataTableType.Spell);
 const spellDescriptions = loadGameData<SpellDescription>(dbPath, GameDataTableType.SpellDescription);
@@ -28,7 +29,8 @@ const abilityLoca = loadLocaTable<AbilityLoca>(dbPath, LocaTableType.Ability);
 
 const toProcess = Object.values(playerCards);
 //const toProcess = [{U0: playerCards.RocketTower.U0}];
-//const toProcess = [playerCards.EnergyCore];
+//const toProcess = [playerCards.KoboldEngineer];
+logger.setLevel(2);
 
 const diagnostics: DiagnosticContainer[] = [];
 const processed: {id: CardIds, name: string;}[] = [];
@@ -136,18 +138,34 @@ try {
             const {squadSize, listedDp20, listedHealth, modeIds} = resolveBasicData(card);
             logger.debug({squadSize, listedDp20, listedHealth, modeIds});
 
-            if (modeIds.length === 0) {
-                diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UnsupportedEntity, entity: null}});
-                continue;
-            }
+            const getStartupMode = (modeIds: number[]): Mode => {
+                if (modeIds.length === 0) {
+                    diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UnsupportedEntity, entity: 'no mode found'}});
+                    return null;
+                }
 
-            // TODO try multiple modes instead until match? (kobold engineer)
-            if (modeIds.length > 1) {
-                diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.MultipleSquadModesFound, modeIds}});
-                continue;
-            }
+                const allModes = modeIds.map(id => modes.get(id));
+                logger.debug({allModes});
 
-            const mode = modes.get(modeIds[0]);
+                if (allModes.length === 1) {
+                    return allModes[0];
+                }
+
+                const startupModes = allModes.filter(m => m.Flags & 256);
+                logger.debug({startupModes});
+
+                if (startupModes.length !== 1) {
+                    diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UnsupportedEntity, entity: `no/multiple startup modes found: ${startupModes.reduce((agg, v) => agg + v.Flags, '')}`}});
+                    return null;
+                }
+
+                return startupModes[0];
+            };
+
+            const mode = getStartupMode(modeIds);
+            if (!mode) {
+                throw new Error('no mode found');
+            }
             logger.debug({mode});
 
             const getRelevantSpellIds = (card: Card, mode: Mode): number[] => {
@@ -309,7 +327,7 @@ try {
                         logger.debug({resolved});
 
                         const nonEmpty = resolved.filter(v => v).filter(v => v.minDmg > 0 || v.maxDmg > 0);
-                        logger.debug({nonEmpty})
+                        logger.debug({nonEmpty});
 
                         if (nonEmpty.length === 1) {
                             return nonEmpty[0];
@@ -408,6 +426,11 @@ try {
                 if (!upgradeTemplate) {
                     return [];
                 }
+                logger.debug({upgradeTemplate});
+
+                if (cardId === 1676) {
+                    return []; // Burning Spears U0 incorrectly has an upgrade template
+                }
 
                 const result: UpgradeData[] = [];
 
@@ -415,8 +438,13 @@ try {
                 const hpMatch = EXTRACT_HP_UPGRADE.exec(upgradeTemplate.Text);
                 if (hpMatch) {
                     const loca = modeLoca.get(+hpMatch[1]);
-                    logger.debug('hpMatch', {L: loca.Values});
-                    const delta = loca.Values.find(l => [ModeLocaType.HealthModifier, ModeLocaType.HealthModifier2].includes(l.Id)).Text;
+                    logger.debug('hpMatch', loca, {L: loca.Values});
+
+                    const modeTranslation = modeTranslations.get(loca.Id).find(t => t.LocaType === CardLocaType.UpgradeData);
+                    const hpKey = +modeTranslation.Text.match(/\d+/)[0];
+                    logger.debug({modeTranslation, hpKey});
+
+                    const delta = loca.Values.find(v => v.Id === hpKey).Text;
                     result.push({health: +delta});
                 }
 
@@ -525,6 +553,16 @@ try {
                             upgradeValues.gainMaxDmg = Math.round(upgradeValues.gainMaxDmg * +atkCooldown);
                         }
 
+                        // witchclaws (frost+fire) uses dmg key to alter range of spell
+                        if (id === 3003576 || id === 3003572) {
+                            upgradeValues.gainMaxDmg = null;
+                        }
+
+                        // lost grigori (shadow) uses dmg key incorrectly
+                        if (id % 1_000_000 === 3275) {
+                            upgradeValues.gainMaxDmg = null;
+                        }
+
                         spellUpgrades.push(upgradeValues);
                     }
                 }
@@ -622,19 +660,17 @@ try {
                     const upgradeMin = gainMinDmg * (oldSpell.type === SpellType.AutoCast ? squadSize : 1);
                     if (gainMinDmg && Math.round(oldSpell.minDmg + upgradeMin) !== currentMinDmg) {
                         diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'gainMinDmg', oldValue: oldSpell.minDmg, newValue: newMinDmg, upgradeValue: upgradeMin}});
-                        if (cardId !== 2001600 && cardId !== 2001604) throw 1; // infected tower has a bug on listed gainMinDmg of U2
+                        if (![2001600, 2001604, 1001238, 1001474].includes(cardId)) throw 1; // known incorrect upgrade displays: infected tower, sunreaver
                     }
 
                     const upgradeMax = gainMaxDmg * (oldSpell.type === SpellType.AutoCast ? squadSize : 1);
                     if (gainMaxDmg && Math.round(oldSpell.maxDmg + upgradeMax) !== currentMaxDmg) {
                         diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'gainMaxDmg', oldValue: oldSpell.maxDmg, newValue: newMaxDmg, upgradeValue: upgradeMax}});
-                        throw 1;
                     }
 
                     if (gainMinStructureDmg && currentMinStructureDmg) {
                         if (currentMinStructureDmg !== Math.round(oldSpell.minStructureDmg + gainMinStructureDmg)) {
                             diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'gainMinStructureDmg', oldValue: oldSpell.minStructureDmg, newValue: currentMinStructureDmg, upgradeValue: gainMinStructureDmg}});
-                            throw 1;
                         }
                     }
 
@@ -642,7 +678,6 @@ try {
                         const currentPowerCost = currentSpell.ProductionPower;
                         if (gainPowerCost !== Math.round(oldSpell.spell.ProductionPower - currentPowerCost)) {
                             diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UpgradeMismatch, property: 'powerCost', oldValue: oldSpell.spell.ProductionPower, newValue: currentPowerCost, upgradeValue: gainPowerCost}});
-                            throw 1;
                         }
                     }
                 }

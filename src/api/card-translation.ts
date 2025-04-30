@@ -11,4 +11,5 @@ export enum CardLocaType {
     UpgradeTemplate = 5,
     TooltipNameTemplate = 6,
     TooltipTextTemplate = 7,
+    UpgradeData = 9,
 }

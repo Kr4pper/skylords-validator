@@ -1,0 +1,8 @@
+WARN  Imperials (id:3000356) -> UpgradeMismatch {"property":"health","oldValue":780,"newValue":840,"upgradeValue":90}
+WARN  Witchclaws (Frost affinity) (id:3001241) -> UpgradeMismatch {"property":"gainMaxDmg","oldValue":0,"newValue":1650,"upgradeValue":10}
+WARN  Bandit Launcher (Shadow affinity) (id:1001320) -> UpgradeMismatch {"property":"health","oldValue":670,"newValue":700,"upgradeValue":3}
+WARN  Lost Grigori (Shadow affinity) (id:2001416) -> UpgradeMismatch {"property":"gainMaxDmg","oldValue":0,"upgradeValue":100}
+WARN  Lost Grigori (Shadow affinity) (id:3001416) -> UpgradeMismatch {"property":"gainMaxDmg","oldValue":0,"upgradeValue":100}
+WARN  Witchclaws (Fire affinity) (id:3001539) -> UpgradeMismatch {"property":"gainMaxDmg","oldValue":0,"newValue":1650,"upgradeValue":10}
+WARN  Infected Tower (Fire affinity) (id:2001600) -> UpgradeMismatch {"property":"gainMinDmg","oldValue":121,"newValue":128,"upgradeValue":9}
+WARN  Infected Tower (Frost affinity) (id:2001604) -> UpgradeMismatch {"property":"gainMinDmg","oldValue":121,"newValue":128,"upgradeValue":9}

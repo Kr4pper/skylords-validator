@@ -1394,10 +1394,10 @@ export enum CardIds {
     DeepOneANatureU2 = 2001240,
     DeepOneANatureU3 = 3001240,
 
-    WitchclawsAShadowU0 = 1241,
-    WitchclawsAShadowU1 = 1001241,
-    WitchclawsAShadowU2 = 2001241,
-    WitchclawsAShadowU3 = 3001241,
+    WitchclawsAFrostU0 = 1241,
+    WitchclawsAFrostU1 = 1001241,
+    WitchclawsAFrostU2 = 2001241,
+    WitchclawsAFrostU3 = 3001241,
 
     FrostBiteAShadowU0 = 1242,
     FrostBiteAShadowU1 = 1001242,
@@ -3223,7 +3223,7 @@ export const playerCards: {[key: string]: {U0: CardIds, U1: CardIds, U2: CardIds
     SunReaverAFire: {U0: 1238, U1: 1001238, U2: 2001238, U3: 3001238},
     DryadANature: {U0: 1239, U1: 1001239, U2: 2001239, U3: 3001239},
     DeepOneANature: {U0: 1240, U1: 1001240, U2: 2001240, U3: 3001240},
-    WitchclawsAShadow: {U0: 1241, U1: 1001241, U2: 2001241, U3: 3001241},
+    WitchclawsAFrost: {U0: 1241, U1: 1001241, U2: 2001241, U3: 3001241},
     FrostBiteAShadow: {U0: 1242, U1: 1001242, U2: 2001242, U3: 3001242},
     EarthenGiftAFire: {U0: 1243, U1: 1001243, U2: 2001243, U3: 3001243},
     UnityANature: {U0: 1244, U1: 1001244, U2: 2001244, U3: 3001244},
