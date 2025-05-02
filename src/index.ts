@@ -12,16 +12,16 @@ if (!existsSync(dbPath)) {
 
 const cards = loadGameData<Card>(dbPath, GameDataTableType.Card);
 const cardDescriptions = loadGameData<CardDescription>(dbPath, GameDataTableType.CardDescription);
-const cardTranslations = loadLanguageTable<SpellTranslation>(dbPath, LanguageTableType.Card);
+const cardTranslations = loadLanguageTable(dbPath, LanguageTableType.Card);
 const squads = loadGameData<Squad>(dbPath, GameDataTableType.Squad);
 const buildings = loadGameData<Building>(dbPath, GameDataTableType.Building);
 const units = loadGameData<Unit>(dbPath, GameDataTableType.Unit);
 const modes = loadGameData<Mode>(dbPath, GameDataTableType.Mode);
-const modeTranslations = loadLanguageTable<SpellTranslation>(dbPath, LanguageTableType.Mode);
+const modeTranslations = loadLanguageTable(dbPath, LanguageTableType.Mode);
 const modeLoca = loadLocaTable<ModeLoca>(dbPath, LocaTableType.Mode);
 const spells = loadGameData<Spell>(dbPath, GameDataTableType.Spell);
 const spellDescriptions = loadGameData<SpellDescription>(dbPath, GameDataTableType.SpellDescription);
-const spellTranslations = loadLanguageTable<SpellTranslation>(dbPath, LanguageTableType.Spell);
+const spellTranslations = loadLanguageTable(dbPath, LanguageTableType.Spell);
 const spellLoca = loadLocaTable<SpellLoca>(dbPath, LocaTableType.Spell);
 const projectiles = loadGameData<Projectile>(dbPath, GameDataTableType.Projectile);
 const abilities = loadGameData<Ability>(dbPath, GameDataTableType.Ability);
@@ -29,7 +29,7 @@ const abilityLoca = loadLocaTable<AbilityLoca>(dbPath, LocaTableType.Ability);
 
 const toProcess = Object.values(playerCards);
 //const toProcess = [{U0: playerCards.RocketTower.U0}];
-//const toProcess = [playerCards.KoboldEngineer];
+//const toProcess = [playerCards.SatanaelAShadow];
 logger.setLevel(2);
 
 const diagnostics: DiagnosticContainer[] = [];
@@ -429,7 +429,8 @@ try {
                 logger.debug({upgradeTemplate});
 
                 if (cardId === 1676) {
-                    return []; // Burning Spears U0 incorrectly has an upgrade template
+                    diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UnsupportedEntity, entity: 'Burning Spears U0 has an upgrade template but shouldnt'}});
+                    return [];
                 }
 
                 const result: UpgradeData[] = [];
@@ -453,7 +454,7 @@ try {
                 if (dp20Match) {
                     const loca = modeLoca.get(+dp20Match[1]);
                     if (loca) { // make sure typos in mode delta ID dont cause crash 
-                        logger.debug('dp20Match', {L: loca.Values});
+                        logger.debug('dp20Match', loca, {L: loca.Values});
                         const delta = loca.Values.find(l => [ModeLocaType.Dp20Modifier, ModeLocaType.Dp20Modifier2].includes(l.Id)).Text;
                         result.push({dp20: +delta});
                     }
@@ -470,14 +471,15 @@ try {
                     const id = +spellDeltaMatch[1];
                     const loca = spellLoca.get(id);
                     if (loca) { // make sure typos in mode delta ID dont cause crash 
-                        logger.debug('spellMatch', {L: loca.Values});
+                        logger.debug('spellMatch', loca);
+
                         const locaMap: Partial<Record<keyof UpgradeData['spells'][0], SpellLocaType[]>> = {
-                            gainMinDmg: [SpellLocaType.UpgradeAddMinDmg],
-                            gainMaxDmg: [SpellLocaType.UpgradeAddMaxDmg],
-                            gainMinStructureDmg: [SpellLocaType.UpgradeAddMinDmgVsStructure],
+                            gainMinDmg: [SpellLocaType.AddMinDmg],
+                            gainMaxDmg: [SpellLocaType.AddMaxDmg],
+                            gainMinStructureDmg: [SpellLocaType.AddMinDmgVsStructure],
                             newMinDmg: [SpellLocaType.ActiveMinDmg, SpellLocaType.MinDmg],
                             newMaxDmg: [SpellLocaType.ActiveMaxDmg, SpellLocaType.MaxDmg],
-                            gainPowerCost: [SpellLocaType.FlatPowerCostModifier],
+                            gainPowerCost: [SpellLocaType.PowerCost],
                         };
                         let upgradeValues = Object.entries(locaMap).reduce((res, [key, types]) => {
                             const type = types.find(t => loca.Values.find(v => v.Id === t));
@@ -486,6 +488,38 @@ try {
                             const value = +loca.Values.find(v => v.Id === type)?.Text;
                             return {...res, [key]: value};
                         }, {id} as UpgradeData['spells'][0]);
+
+                        const _lang = spellTranslations.get(id);
+                        logger.debug({_lang});
+                        const declaredUpgradeIds = loca.Values.reduce((agg, v) => [...agg, v.Id], []);
+                        const usedLocaKeys = _lang.reduce((agg, v) => {
+                            let match = null;
+                            const foundKeys: number[] = [];
+                            const REGEX = /\%(\d+)\%/g;
+                            while (match = REGEX.exec(v.Text)) {
+                                logger.debug({t: v.Text, match});
+                                foundKeys.push(+match[1]);
+                            }
+
+                            return [...agg, ...foundKeys];
+                        }, []);
+                        logger.debug({declaredUpgradeIds, usedLocaKeys});
+
+                        const unusedSpellLocaEntries = declaredUpgradeIds.filter(v => !usedLocaKeys.find(k => k === v));
+                        if (unusedSpellLocaEntries.length > 0) {
+                            diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UnusedSpellLocaEntries, spellId: loca.Id, entries: unusedSpellLocaEntries, translated: unusedSpellLocaEntries.map(v => SpellLocaType[v])}});
+                        }
+
+                        const undeclaredSpellLocaEntries = usedLocaKeys.filter(v => !declaredUpgradeIds.find(k => k === v));
+                        if (undeclaredSpellLocaEntries.length > 0) {
+                            diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UndeclaredSpellLocaEntries, spellId: loca.Id, entries: undeclaredSpellLocaEntries, translated: undeclaredSpellLocaEntries.map(v => SpellLocaType[v])}});
+                        }
+
+                        const UNKOWN_UPGRADE_KEYS = [82, 131, 175, 203];
+                        const unkownUpgrades = declaredUpgradeIds.filter(id => UNKOWN_UPGRADE_KEYS.includes(id));
+                        if (unkownUpgrades.length > 0) {
+                            diagnostics.push({card: {id: cardId, name: cardName}, diag: {type: DiagnosticType.UnknownUpgradeKeys, spellId: loca.Id, keys: unkownUpgrades}});
+                        }
 
                         // burrower spit bug handling
                         if (id % 1_000_000 === 1151) {
@@ -535,7 +569,7 @@ try {
                             upgradeValues.id = null;
                         }
 
-                        // satanael setting incorrect power modifier
+                        // satanael (shadow) setting incorrect power modifier
                         if (id === 1003122 || id === 2003122) {
                             upgradeValues.gainPowerCost = 0;
                         }
@@ -629,7 +663,7 @@ try {
             logger.debug(result);
 
             if (previousUpgrade && upgradeData) {
-                if (upgradeData.dp20) { // melee units
+                if (upgradeData.dp20) {
                     logger.debug('dp20 upgrade sanity check', upgradeData.dp20);
                     const oldValue = previousUpgrade.listedDp20;
                     logger.debug({oldValue, listedDp20, upgrade: upgradeData.dp20, squadSize});
@@ -702,7 +736,7 @@ const countByType = (diagnostics: DiagnosticContainer[]) => {
     return res;
 };
 
-diagnostics.filter(d => d.diag.type === DiagnosticType.UpgradeMismatch).forEach(d => logger.warn(prettifyDiagnostic(d)));
+diagnostics.filter(d => d.diag.type === DiagnosticType.UnknownUpgradeKeys).forEach(d => logger.warn(prettifyDiagnostic(d)));
 //diagnostics.forEach(d => logger.warn(prettifyDiagnostic(d)));
 
 logger.warn(`${diagnostics.length} diagnostics`);

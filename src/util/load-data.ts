@@ -27,11 +27,17 @@ export const loadGameData = <T extends {Id: number;}>(db: string, type: GameData
     return dataTable;
 };
 
-export const loadLanguageTable = <T extends {Id: number;}>(db: string, type: LanguageTableType): Map<number, T[]> => {
-    const languageTable = new Map<number, T[]>();
+interface LanguageTableEntry {
+    "Id": number,
+    "LocaType": number,
+    "Text": string,
+}
+
+export const loadLanguageTable = (db: string, type: LanguageTableType): Map<number, LanguageTableEntry[]> => {
+    const languageTable = new Map<number, LanguageTableEntry[]>();
 
     for (const filePath of getFilePathsByType(db, type + '_en')) {
-        const file = JSON.parse(readFileSync(filePath).toString()) as {Entities: T[];};
+        const file = JSON.parse(readFileSync(filePath).toString()) as {Entities: LanguageTableEntry[];};
         for (const entity of file.Entities) {
             const next = languageTable.get(entity.Id) ? [...languageTable.get(entity.Id), entity] : [entity];
             languageTable.set(entity.Id, next);

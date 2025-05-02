@@ -10,6 +10,9 @@ export enum DiagnosticType {
     UpgradeMismatch = 'UpgradeMismatch',
     UsesRangedArmor = 'UsesRangedArmor',
     SizeArmorMismatch = 'SizeArmorMismatch',
+    UnusedSpellLocaEntries = 'UnusedSpellLocaEntries',
+    UndeclaredSpellLocaEntries = 'UndeclaredSpellLocaEntries',
+    UnknownUpgradeKeys = 'UnknownUpgradeKeys',
 }
 
 export type Diagnostic = (
@@ -21,6 +24,9 @@ export type Diagnostic = (
     | {type: DiagnosticType.UpgradeMismatch;} & UpgradeMismatch
     | {type: DiagnosticType.UsesRangedArmor;} & UsesRangedArmor
     | {type: DiagnosticType.SizeArmorMismatch;} & SizeArmorMismatch
+    | {type: DiagnosticType.UnusedSpellLocaEntries;} & UnusedSpellLocaEntries
+    | {type: DiagnosticType.UndeclaredSpellLocaEntries;} & UndeclaredSpellLocaEntries
+    | {type: DiagnosticType.UnknownUpgradeKeys;} & UnknownUpgradeKeys
 );
 
 export type DiagnosticContainer = {card: {id: CardIds; name: string;}, diag: Diagnostic;};
@@ -40,3 +46,9 @@ type UpgradeMismatch = {property: string; oldValue: number, newValue: number, up
 type UsesRangedArmor = {armor: ArmorType;};
 
 type SizeArmorMismatch = {size: SizeType, armor: ArmorType;};
+
+type UnusedSpellLocaEntries = {spellId: number, entries: number[], translated: string[];};
+
+type UndeclaredSpellLocaEntries = {spellId: number, entries: number[], translated: string[];};
+
+type UnknownUpgradeKeys = {spellId: number, keys: number[];};
