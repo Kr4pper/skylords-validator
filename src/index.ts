@@ -28,9 +28,11 @@ const abilities = loadGameData<Ability>(dbPath, GameDataTableType.Ability);
 const abilityLoca = loadLocaTable<AbilityLoca>(dbPath, LocaTableType.Ability);
 
 const toProcess = Object.values(playerCards);
-//const toProcess = [{U0: playerCards.RocketTower.U0}];
-//const toProcess = [playerCards.SatanaelAShadow];
+//const toProcess = [{U0: playerCards.Northguards.U0}];
+//const toProcess = [playerCards.Northguards];
 logger.setLevel(2);
+
+const descriptionTypes = new Set<string>();
 
 const diagnostics: DiagnosticContainer[] = [];
 const processed: {id: CardIds, name: string;}[] = [];
@@ -662,6 +664,13 @@ try {
             };
             logger.debug(result);
 
+            const translations = cardTranslations.get(cardId);
+            const cardDescription = translations.find(t => t.LocaType === CardLocaType.ClassName);
+            if (cardDescription) {
+                descriptionTypes.add(cardDescription.Text);
+                if (cardDescription.Text === 'Merry Christmas! Santa Claus always means well and has a bagful of presents to give away.') throw 1;
+            }
+
             if (previousUpgrade && upgradeData) {
                 if (upgradeData.dp20) {
                     logger.debug('dp20 upgrade sanity check', upgradeData.dp20);
@@ -746,3 +755,5 @@ logger.info(`${processed.length} cards processed`);
 logger.info(countByType(diagnostics));
 
 console.timeEnd('elapsed');
+
+logger.info([...descriptionTypes].sort().join('\n'))
